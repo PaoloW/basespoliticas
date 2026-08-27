@@ -3,16 +3,21 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Facades\Hash;
 
-class Usuario extends Model
+class Usuario extends Authenticatable
 {
     use HasFactory, SoftDeletes;
+
+    /**
+     * DNI de la persona genérica que opera como superadministrador del sistema.
+     */
+    public const DNI_ADMIN = '00000000';
 
     /**
      * Tabla asociada al modelo.
@@ -52,6 +57,21 @@ class Usuario extends Model
 
     /*
     |--------------------------------------------------------------------------
+    | Autenticación (guard de Laravel)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Devuelve la contraseña usada por el guard de autenticación.
+     * En esta tabla la contraseña vive en la columna `clave`, no en `password`.
+     */
+    public function getAuthPassword(): string
+    {
+        return $this->clave;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Relaciones
     |--------------------------------------------------------------------------
     */
@@ -77,7 +97,23 @@ class Usuario extends Model
      */
     public function menus(): BelongsToMany
     {
-        return $this->belongsToMany(Menu::class, 'accesos', 'usuario_id', 'menu_id', 'usuario_id', 'menu_id');
+        return $this->belongsToMany(Menu::class, 'accesos', 'usuario_id', 'menu_id', 'usuario_id', 'menu_id')
+            ->withPivot('acceso_id', 'autor_id', 'editor_id')
+            ->withTimestamps();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accesores
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Nombre a mostrar del usuario: toma el nombre completo de su persona.
+     */
+    public function getNombreAttribute(): ?string
+    {
+        return $this->persona?->apellidoNombre();
     }
 
     /*
@@ -107,17 +143,29 @@ class Usuario extends Model
     }
 
     /**
-     * Asigna un menú al usuario de forma idempotente.
+     * Indica si es el superadministrador del sistema (DNI de la persona genérica).
      */
-    public function asignarMenu(int $menuId, ?int $autorId = null): void
+    public function esAdmin(): bool
     {
-        $this->accesos()->firstOrCreate([
-            'usuario_id' => $this->usuario_id,
-            'menu_id' => $menuId,
-        ], [
-            'autor_id' => $autorId,
-            'editor_id' => $autorId,
-        ]);
+        return $this->persona && $this->persona->dniNormalizado() === self::DNI_ADMIN;
+    }
+
+    /**
+     * Asigna un menú al usuario de forma idempotente.
+     *
+     * @return Acceso
+     */
+    public function asignarMenu(int $menuId, ?int $editorId = null)
+    {
+        return $this->accesos()->updateOrCreate(
+            [
+                'usuario_id' => $this->usuario_id,
+                'menu_id' => $menuId,
+            ],
+            [
+                'editor_id' => $editorId,
+            ]
+        );
     }
 
     /**

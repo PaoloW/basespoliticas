@@ -25,7 +25,7 @@ class MenuSeeder extends Seeder
                 'hijos' => [
                     ['descripcion' => 'Usuarios', 'icono' => 'pi pi-users'],
                     ['descripcion' => 'Personas', 'icono' => 'pi pi-user'],
-                    ['descripcion' => 'Centros de votación', 'icono' => 'pi pi-building'],
+                    ['descripcion' => 'Centros de votación', 'icono' => 'pi pi-hand-fist'],
                     ['descripcion' => 'Mesas de votación', 'icono' => 'pi pi-table'],
                     ['descripcion' => 'Cargos', 'icono' => 'pi pi-briefcase'],
                     ['descripcion' => 'Bases', 'icono' => 'pi pi-database'],
