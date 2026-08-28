@@ -2,6 +2,11 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BaseController;
+use App\Http\Controllers\CargoController;
+use App\Http\Controllers\CentroController;
+use App\Http\Controllers\MesaController;
+use App\Http\Controllers\PersonaController;
 use App\Http\Controllers\UsuarioController;
 
 // ---------------------------------------------------------------------------
@@ -20,6 +25,11 @@ Route::get('/home', function () {
 })->name('home')->middleware('auth');
 
 // ---------------------------------------------------------------------------
-// Gestión de usuarios
+// Gestión
 // ---------------------------------------------------------------------------
 Route::resource('usuarios', UsuarioController::class)->except(['show'])->middleware('auth');
+Route::resource('personas', PersonaController::class)->except(['show'])->middleware('auth');
+Route::resource('centros', CentroController::class)->except(['show'])->middleware('auth');
+Route::resource('mesas', MesaController::class)->except(['show'])->middleware('auth');
+Route::resource('cargos', CargoController::class)->except(['show'])->middleware('auth');
+Route::resource('bases', BaseController::class)->except(['show'])->parameters(['bases' => 'base'])->middleware('auth');

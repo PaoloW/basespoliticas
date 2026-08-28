@@ -11,12 +11,32 @@
 
                 @auth
                     <div class="sb-sidenav-menu-heading">Gestión</div>
-                    @if ( auth()->user()->esAdmin() )
-                        <a class="nav-link {{ request()->routeIs('usuarios.*') ? 'active' : '' }}" href="{{ route('usuarios.index') }}">
-                            <div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>
-                            Usuarios
-                        </a>
-                    @endif
+                @if ( auth()->user()->esAdmin() )
+                    <a class="nav-link {{ request()->routeIs('usuarios.*') ? 'active' : '' }}" href="{{ route('usuarios.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>
+                        Usuarios
+                    </a>
+                    <a class="nav-link {{ request()->routeIs('personas.*') ? 'active' : '' }}" href="{{ route('personas.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-user"></i></div>
+                        Personas
+                    </a>
+                    <a class="nav-link {{ request()->routeIs('centros.*') ? 'active' : '' }}" href="{{ route('centros.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-school"></i></div>
+                        Centros de votación
+                    </a>
+                    <a class="nav-link {{ request()->routeIs('mesas.*') ? 'active' : '' }}" href="{{ route('mesas.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-table"></i></div>
+                        Mesas de votación
+                    </a>
+                    <a class="nav-link {{ request()->routeIs('cargos.*') ? 'active' : '' }}" href="{{ route('cargos.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-briefcase"></i></div>
+                        Cargos
+                    </a>
+                    <a class="nav-link {{ request()->routeIs('bases.*') ? 'active' : '' }}" href="{{ route('bases.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-database"></i></div>
+                        Bases
+                    </a>
+                @endif
                 @endauth
 
                 <div class="sb-sidenav-menu-heading">Cuenta</div>
