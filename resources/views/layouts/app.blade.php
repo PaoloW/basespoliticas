@@ -77,6 +77,13 @@
     <!-- Template JS -->
     <script type="text/javascript" src="{{ asset('js/scripts.js') }}"></script>
 
+    <!-- Corregir botones de exportación de DataTables -->
+    <script>
+        $.extend(true, $.fn.dataTable.Buttons.defaults.dom, {
+            button: { className: 'btn btn-outline-secondary btn-sm' },
+        });
+    </script>
+
     @stack('scripts')
     @yield('footer')
 </body>

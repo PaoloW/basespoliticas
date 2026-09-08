@@ -95,9 +95,7 @@
                 buttons: [
                     botonExportar('copy', 'Copiar', 'fas fa-copy', 'btn-outline-secondary'),
                     botonExportar('excel', 'Excel', 'fas fa-file-excel', 'btn-outline-success'),
-                    botonExportar('csv', 'CSV', 'fas fa-file-csv', 'btn-outline-secondary'),
                     botonExportar('pdf', 'PDF', 'fas fa-file-pdf', 'btn-outline-danger'),
-                    botonExportar('print', 'Imprimir', 'fas fa-print', 'btn-outline-dark'),
                 ],
             });
         });
