@@ -27,6 +27,11 @@ Route::get('/home', function () {
 // ---------------------------------------------------------------------------
 // Gestión
 // ---------------------------------------------------------------------------
+// Búsqueda de una persona por su DNI (para asignarla como nuevo usuario).
+Route::get('usuarios/buscar-persona', [UsuarioController::class, 'buscarPersonaPorDni'])
+    ->name('usuarios.buscarPersona')
+    ->middleware('auth');
+
 Route::resource('usuarios', UsuarioController::class)->except(['show'])->middleware('auth');
 Route::resource('personas', PersonaController::class)->except(['show'])->middleware('auth');
 Route::resource('centros', CentroController::class)->except(['show'])->middleware('auth');

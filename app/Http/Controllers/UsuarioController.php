@@ -31,12 +31,51 @@ class UsuarioController extends Controller
      */
     public function create()
     {
-        $personas = Persona::whereDoesntHave('usuario')->orderBy('primer_apellido')->get();
         $menu_ids = [];
         $menus = $this->menusJerarquicos();
         $usuario = new Usuario();
 
-        return view('usuarios.create', compact('usuario', 'personas', 'menus', 'menu_ids'));
+        // Recupera la persona elegida si el formulario fue enviado y falló la validación.
+        $personaSeleccionada = old('persona_id')
+            ? Persona::where('persona_id', old('persona_id'))->first()
+            : null;
+
+        return view('usuarios.create', compact('usuario', 'menus', 'menu_ids', 'personaSeleccionada'));
+    }
+
+    /**
+     * Busca una persona por su DNI para asignarla como nuevo usuario (AJAX).
+     *
+     * Devuelve JSON con la persona encontrada o el motivo por el cual no se puede usar.
+     */
+    public function buscarPersonaPorDni(Request $request)
+    {
+        $dni = preg_replace('/\D/', '', (string) $request->query('dni', ''));
+
+        if ($dni === '') {
+            return response()->json(['mensaje' => 'Ingrese un DNI para buscar la persona.'], 422);
+        }
+
+        $persona = Persona::whereRaw(
+            "REPLACE(REPLACE(REPLACE(TRIM(dni), '.', ''), '-', ''), ' ', '') = ?",
+            [$dni]
+        )->first();
+
+        if (! $persona) {
+            return response()->json(['mensaje' => 'No se encontró ninguna persona con el DNI ingresado.'], 404);
+        }
+
+        if ($persona->usuario()->exists()) {
+            return response()->json([
+                'mensaje' => 'La persona '.$persona->apellidoNombre().' (DNI: '.$persona->dni.') ya tiene una cuenta de usuario.',
+            ], 409);
+        }
+
+        return response()->json([
+            'persona_id' => $persona->persona_id,
+            'dni' => $persona->dni,
+            'nombre_completo' => $persona->apellidoNombre(),
+        ]);
     }
 
     /**
@@ -65,14 +104,10 @@ class UsuarioController extends Controller
      */
     public function edit(Usuario $usuario)
     {
-        $personas = Persona::where(function ($query) use ($usuario) {
-            $query->whereDoesntHave('usuario')->orWhere('persona_id', $usuario->persona_id);
-        })->orderBy('primer_apellido')->get();
-
         $menu_ids = $usuario->accesos()->pluck('menu_id')->toArray();
         $menus = $this->menusJerarquicos();
 
-        return view('usuarios.edit', compact('usuario', 'personas', 'menus', 'menu_ids'));
+        return view('usuarios.edit', compact('usuario', 'menus', 'menu_ids'));
     }
 
     /**
