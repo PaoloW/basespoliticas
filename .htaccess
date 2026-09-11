@@ -1,0 +1,16 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Redirected everything to /public
+    RewriteRule ^ public [L]
+
+    # block files which needs to be hidden // in here specify .example extension of the file
+    <Files ~ "\.(env|config.js|md|git|gitignore|gitattributes|lock)$">
+        Order allow,deny
+        Deny from all
+    </Files>
+</IfModule>
