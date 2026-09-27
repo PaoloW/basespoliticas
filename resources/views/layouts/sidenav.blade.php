@@ -36,6 +36,10 @@
                         <div class="sb-nav-link-icon"><i class="fas fa-database"></i></div>
                         Bases
                     </a>
+                    <a class="nav-link {{ request()->routeIs('partidos.*') ? 'active' : '' }}" href="{{ route('partidos.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-flag"></i></div>
+                        Partidos
+                    </a>
                 @endif
                 @endauth
 

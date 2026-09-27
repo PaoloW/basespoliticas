@@ -29,6 +29,7 @@ class MenuSeeder extends Seeder
                     ['descripcion' => 'Mesas de votación', 'icono' => 'pi pi-table'],
                     ['descripcion' => 'Cargos', 'icono' => 'pi pi-briefcase'],
                     ['descripcion' => 'Bases', 'icono' => 'pi pi-database'],
+                    ['descripcion' => 'Partidos', 'icono' => 'pi pi-flag'],
                 ],
             ],
             'Procesos' => [
