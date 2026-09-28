@@ -41,7 +41,9 @@ class UsuarioController extends Controller
             ? Persona::where('persona_id', old('persona_id'))->first()
             : null;
 
-        return view('usuarios.create', compact('usuario', 'menus', 'menu_ids', 'personaSeleccionada'));
+        $puedeGestionarAccesos = true;
+
+        return view('usuarios.create', compact('usuario', 'menus', 'menu_ids', 'personaSeleccionada', 'puedeGestionarAccesos'));
     }
 
     /**
@@ -121,8 +123,9 @@ class UsuarioController extends Controller
     {
         $menu_ids = $usuario->accesos()->pluck('menu_id')->toArray();
         $menus = $this->menusJerarquicos();
+        $puedeGestionarAccesos = (bool) Auth::user()?->tieneAccesoDescripcion(Menu::USUARIOS);
 
-        return view('usuarios.edit', compact('usuario', 'menus', 'menu_ids'));
+        return view('usuarios.edit', compact('usuario', 'menus', 'menu_ids', 'puedeGestionarAccesos'));
     }
 
     /**
@@ -131,8 +134,11 @@ class UsuarioController extends Controller
     public function update(Request $request, Usuario $usuario)
     {
         $data = $this->validarUpdate($request, $usuario);
+        // Sin el menú "Usuarios" no se pueden modificar los accesos propios.
+        $puedeGestionarAccesos = (bool) Auth::user()?->tieneAccesoDescripcion(Menu::USUARIOS);
+        $esPropio = (int) $usuario->usuario_id === (int) Auth::id();
 
-        DB::transaction(function () use ($usuario, $data) {
+        DB::transaction(function () use ($usuario, $data, $puedeGestionarAccesos) {
             $usuario->editor_id = Auth::id();
 
             if (! empty($data['clave'])) {
@@ -141,8 +147,14 @@ class UsuarioController extends Controller
 
             $usuario->save();
 
-            $this->guardarAccesos($usuario, $data['menu_ids'] ?? []);
+            if ($puedeGestionarAccesos) {
+                $this->guardarAccesos($usuario, $data['menu_ids'] ?? []);
+            }
         });
+
+        if ($esPropio && ! $puedeGestionarAccesos) {
+            return redirect()->route('home')->with('success', 'Sus datos fueron actualizados correctamente.');
+        }
 
         return redirect()->route('usuarios.index')->with('success', 'Usuario actualizado correctamente.');
     }

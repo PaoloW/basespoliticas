@@ -44,6 +44,8 @@ class VerificarAcceso
 
         'votos.index' => Menu::VER_CONTEOS,
         'votos.conteo' => [Menu::VER_CONTEOS, Menu::REGISTRAR_CONTEOS],
+        'votos.buscarPersonero' => [Menu::VER_CONTEOS, Menu::REGISTRAR_CONTEOS],
+        'votos.personerosModal' => [Menu::VER_CONTEOS, Menu::REGISTRAR_CONTEOS],
         'votos.registrar' => Menu::REGISTRAR_CONTEOS,
         'votos.guardar' => Menu::REGISTRAR_CONTEOS,
         'votos.edit' => [Menu::VER_CONTEOS, Menu::REGISTRAR_CONTEOS],

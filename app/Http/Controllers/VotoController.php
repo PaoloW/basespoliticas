@@ -54,13 +54,14 @@ class VotoController extends Controller
 
         // Personero del formulario: el del usuario activo o el recibido por parámetro.
         $personeroSel = $personeroActual
-            ?? ($request->filled('personero_id') ? Personero::with('mesa')->find($request->input('personero_id')) : null);
+            ?? ($request->filled('personero_id') ? Personero::with(['persona', 'mesa'])->find($request->input('personero_id')) : null);
 
         // Solo el administrador puede registrar el conteo de otro personero.
         $personeros = ($personeroActual || ! $esAdmin) ? collect() : $this->personerosOrdenados();
         $conteos = $this->conteosDe($personeroSel?->personero_id);
+        $personaSeleccionada = $personeroSel?->persona ?? $personeroActual?->persona;
 
-        return view('votos.registrar', compact('voto', 'partidos', 'personeros', 'personeroActual', 'personeroSel', 'conteos'));
+        return view('votos.registrar', compact('voto', 'partidos', 'personeros', 'personeroActual', 'personeroSel', 'conteos', 'personaSeleccionada'));
     }
 
     /**
@@ -92,20 +93,20 @@ class VotoController extends Controller
      */
     public function edit(Voto $voto)
     {
-        $personero = $voto->personero;
+        $personero = $voto->personero()->with(['persona', 'mesa.centro'])->first();
         $partidos = $this->partidosOrdenados();
         $conteos = $this->conteosDe($voto->personero_id);
+        $personaSeleccionada = $personero?->persona;
+        $personeros = collect();
 
-        return view('votos.edit', compact('voto', 'personero', 'partidos', 'conteos'));
+        return view('votos.edit', compact('voto', 'personero', 'partidos', 'conteos', 'personaSeleccionada', 'personeros'));
     }
 
     /**
-     * Actualiza el conteo por cada partido del personero del registro.
+     * Actualiza el conteo por cada partido del personero elegido en el formulario.
      */
     public function update(Request $request, Voto $voto)
     {
-        $request->merge(['personero_id' => $voto->personero_id]);
-
         $data = $this->validar($request);
         $conteos = $this->normalizarConteos($request);
 
@@ -116,6 +117,65 @@ class VotoController extends Controller
         });
 
         return redirect()->route('votos.index')->with('success', 'Conteo de votos actualizado correctamente.');
+    }
+
+    /**
+     * Busca un personero por el DNI de su persona (AJAX).
+     */
+    public function buscarPersoneroPorDni(Request $request)
+    {
+        $dni = preg_replace('/\D/', '', (string) $request->query('dni', ''));
+
+        if ($dni === '') {
+            return response()->json(['mensaje' => 'Ingrese un DNI para buscar el personero.'], 422);
+        }
+
+        $persona = \App\Models\Persona::whereRaw(
+            "REPLACE(REPLACE(REPLACE(TRIM(dni), '.', ''), '-', ''), ' ', '') = ?",
+            [$dni]
+        )->first();
+
+        if (! $persona) {
+            return response()->json(['mensaje' => 'No se encontró ninguna persona con el DNI ingresado.'], 404);
+        }
+
+        $personero = Personero::with(['persona', 'mesa.centro'])->where('persona_id', $persona->persona_id)->first();
+
+        if (! $personero) {
+            return response()->json(['mensaje' => 'La persona encontrada aún no está registrada como personero.'], 404);
+        }
+
+        return response()->json([
+            'personero_id' => $personero->personero_id,
+            'dni' => $personero->persona?->dni,
+            'nombre_completo' => $personero->persona?->apellidoNombre(),
+            'mesa' => $personero->mesa?->etiqueta(),
+            'conteos' => $this->conteosDe($personero->personero_id),
+        ]);
+    }
+
+    /**
+     * Personeros registrados para el modal (paginado en el servidor).
+     */
+    public function personerosModal()
+    {
+        $query = Personero::query()
+            ->leftJoin('personas', 'personas.persona_id', '=', 'personeros.persona_id')
+            ->leftJoin('mesas', 'mesas.mesa_id', '=', 'personeros.mesa_id')
+            ->select(['personeros.personero_id', 'personas.dni']);
+
+        return \Yajra\DataTables\Facades\DataTables::eloquent($query)
+            ->addColumn('persona', function (Personero $personero) {
+                $personero->loadMissing(['persona', 'mesa']);
+
+                return $personero->persona?->apellidoNombre() ?? '—';
+            })
+            ->addColumn('mesa', function (Personero $personero) {
+                $personero->loadMissing(['persona', 'mesa']);
+
+                return $personero->mesa?->etiqueta() ?? '—';
+            })
+            ->toJson();
     }
 
     /**

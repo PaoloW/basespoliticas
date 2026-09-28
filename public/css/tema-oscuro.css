@@ -127,6 +127,43 @@
 
 [data-bs-theme="dark"] .dropdown-menu {
     background-color: #2b3035;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .dropdown-menu .dropdown-item,
+[data-bs-theme="dark"] .dropdown-menu button.dropdown-item {
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .dropdown-menu .dropdown-item:hover,
+[data-bs-theme="dark"] .dropdown-menu .dropdown-item:focus,
+[data-bs-theme="dark"] .dropdown-menu button.dropdown-item:hover,
+[data-bs-theme="dark"] .dropdown-menu button.dropdown-item:focus {
+    background-color: #343a40;
+    color: #ffffff;
+}
+
+[data-bs-theme="dark"] .dropdown-menu .dropdown-item:active,
+[data-bs-theme="dark"] .dropdown-menu .dropdown-item.active {
+    background-color: #0d6efd;
+    color: #ffffff;
+}
+
+[data-bs-theme="dark"] .dropdown-menu .dropdown-item i,
+[data-bs-theme="dark"] .dropdown-menu button.dropdown-item i {
+    color: inherit;
+}
+
+/* La barra superior siempre es oscura: forzar texto claro en su desplegable
+   aunque el tema activo sea claro. */
+.sb-topnav .dropdown-menu .dropdown-item,
+.sb-topnav .dropdown-menu button.dropdown-item {
+    color: #212529;
+}
+
+[data-bs-theme="dark"] .sb-topnav .dropdown-menu .dropdown-item,
+[data-bs-theme="dark"] .sb-topnav .dropdown-menu button.dropdown-item {
+    color: #dee2e6;
 }
 
 [data-bs-theme="dark"] .dropdown-divider {
@@ -186,6 +223,73 @@
 
 [data-bs-theme="dark"] .form-text {
     color: #adb5bd;
+}
+
+/* Contraste global de textos y controles en modo oscuro. */
+[data-bs-theme="dark"] {
+    --bs-body-color: #e9ecef;
+    --bs-emphasis-color: #ffffff;
+}
+
+[data-bs-theme="dark"] .form-label,
+[data-bs-theme="dark"] label {
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+    background-color: #16191d;
+    border-color: #6c757d;
+    color: #f1f3f5;
+}
+
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus {
+    background-color: #16191d;
+    border-color: #9ec5fe;
+    box-shadow: 0 0 0 .25rem rgba(110, 168, 254, .35);
+    color: #ffffff;
+}
+
+[data-bs-theme="dark"] .form-control::placeholder {
+    color: #9aa1a9;
+    opacity: 1;
+}
+
+[data-bs-theme="dark"] .form-control:disabled,
+[data-bs-theme="dark"] .form-select:disabled,
+[data-bs-theme="dark"] .form-control[readonly] {
+    background-color: #343a40;
+    border-color: #6c757d;
+    color: #f1f3f5;
+    opacity: 1;
+}
+
+[data-bs-theme="dark"] .input-group .btn-outline-primary,
+[data-bs-theme="dark"] .input-group .btn-outline-secondary,
+[data-bs-theme="dark"] .input-group .btn-outline-success {
+    border-color: #6c757d;
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] input[type="number"].form-control {
+    color-scheme: dark;
+}
+
+[data-bs-theme="dark"] .form-check-label {
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .text-secondary {
+    color: #ced4da !important;
+}
+
+[data-bs-theme="dark"] .breadcrumb-item a {
+    color: #9ec5fe;
+}
+
+[data-bs-theme="dark"] .breadcrumb-item.active {
+    color: #e9ecef;
 }
 
 /* Select2 (tema bootstrap-5) */

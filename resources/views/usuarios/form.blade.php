@@ -96,7 +96,16 @@
                 <p class="text-muted small mb-1"><em>Seleccione los menús a los que tendrá acceso el usuario</em></p>
             </div>
             <div class="card-body">
-                <div class="grid-container">
+                @php $puedeGestionarAccesos = $puedeGestionarAccesos ?? true; @endphp
+                @if ( ! $puedeGestionarAccesos )
+                    <div class="alert alert-info py-2 mb-3">
+                        <i class="fas fa-info-circle me-1"></i>Solo puede cambiar su contraseña. La gestión de accesos requiere el menú <strong>Usuarios</strong>.
+                    </div>
+                    @foreach ( (array) ($menu_ids ?? []) as $menuId )
+                        <input type="hidden" name="menu_ids[]" value="{{ $menuId }}">
+                    @endforeach
+                @endif
+                <div class="grid-container" @if ( ! $puedeGestionarAccesos ) aria-disabled="true" style="pointer-events: none; opacity: .65;" @endif>
                     @forelse ( $menus as $menu )
                         <div class="menu-group">
                             <div class="fw-bold mb-1"><i class="{{ $menu->icono }} me-1"></i>{{ $menu->descripcion }}</div>
@@ -104,7 +113,8 @@
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" name="menu_ids[]"
                                            id="menu_{{ $hijo->menu_id }}" value="{{ $hijo->menu_id }}"
-                                           @if ( in_array( (int) $hijo->menu_id, (array) $menu_ids, true ) ) checked @endif>
+                                           @if ( in_array( (int) $hijo->menu_id, (array) $menu_ids, true ) ) checked @endif
+                                           @if ( ! $puedeGestionarAccesos ) disabled @endif>
                                     <label class="form-check-label" for="menu_{{ $hijo->menu_id }}">
                                         <i class="{{ $hijo->icono }} me-1"></i>{{ $hijo->descripcion }}
                                     </label>

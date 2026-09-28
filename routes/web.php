@@ -73,6 +73,16 @@ Route::get('votos/personero/{personero}/conteo', [VotoController::class, 'conteo
     ->middleware('auth')
     ->middleware('acceso');
 
+// Búsqueda de personero por DNI y listado paginado para el modal (edición admin).
+Route::get('votos/buscar-personero', [VotoController::class, 'buscarPersoneroPorDni'])
+    ->name('votos.buscarPersonero')
+    ->middleware('auth')
+    ->middleware('acceso');
+Route::get('votos/personeros-modal', [VotoController::class, 'personerosModal'])
+    ->name('votos.personerosModal')
+    ->middleware('auth')
+    ->middleware('acceso');
+
 // Ver conteo de votos: reporte de personeros que registraron votos.
 Route::get('votos', [VotoController::class, 'index'])
     ->name('votos.index')

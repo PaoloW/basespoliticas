@@ -16,6 +16,7 @@
     $personeroFijo = $esPersonero ? $personeroActual : ( $personero ?? null );
     $conteoActual = $conteos ?? [];
     $personeroSelect = $personeroSel ?? $personeroFijo;
+    $personaSeleccionada = $personaSeleccionada ?? $personeroFijo?->persona;
     // Usuario sin registro de personero ni opción de elegir uno.
     $sinPersonero = ! $esEdicion && ! $esPersonero && $personeros->isEmpty();
 @endphp
@@ -36,34 +37,47 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-12 col-md-6 mb-3">
-                        <label class="form-label"><strong>Personero</strong></label>
-                        @if ( $esPersonero || $esEdicion )
-                            <input type="text" class="form-control" readonly
-                                   value="{{ $personeroFijo?->persona?->apellidoNombre() }} (DNI: {{ $personeroFijo?->persona?->dni }})">
-                            <input type="hidden" name="personero_id" id="personero_id" value="{{ $personeroFijo?->personero_id }}">
+                    <div class="col-12 col-md-4 mb-3">
+                        <label for="dni_buscar" class="form-label"><strong>DNI del personero</strong></label>
+                        @if ( $esPersonero )
+                            <input type="text" class="form-control" id="dni_buscar" readonly
+                                   value="{{ $personeroFijo?->persona?->dni }}">
                         @else
-                            <select class="form-select" name="personero_id" id="personero_id" required>
-                                <option value="">Seleccione un personero</option>
-                                @forelse ( $personeros as $personeroItem )
-                                    <option value="{{ $personeroItem->personero_id }}"
-                                            data-mesa="{{ $personeroItem->mesa?->etiqueta() }}"
-                                            @if ( old( 'personero_id', $personeroSelect?->personero_id ) == $personeroItem->personero_id ) selected @endif>
-                                        {{ $personeroItem->persona?->apellidoNombre() }} — DNI {{ $personeroItem->persona?->dni }} — {{ $personeroItem->mesa?->etiqueta() }}
-                                    </option>
-                                @empty
-                                    <option value="" disabled>No hay personeros registrados</option>
-                                @endforelse
-                            </select>
-                            <div class="form-text">
-                                Registre personeros en el módulo <a href="{{ route('personeros.index') }}">Personeros</a>.
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="dni_buscar" name="dni_buscar"
+                                       value="{{ old('dni_buscar', $personaSeleccionada->dni ?? '') }}"
+                                       placeholder="Ingrese el DNI" spellcheck="false" autocorrect="off"
+                                       autocapitalize="off" autocomplete="off" inputmode="numeric" maxlength="20">
+                                <button type="button" class="btn btn-outline-primary" id="btnModalPersoneros"
+                                        data-bs-toggle="tooltip" title="Buscar personero en el listado">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                                <a class="btn btn-outline-success" id="btnRegistrarPersonero"
+                                   href="{{ route('personeros.create') }}" style="display: none;"
+                                   data-bs-toggle="tooltip" title="Registrar personero nuevo">
+                                    <i class="fas fa-plus"></i>
+                                </a>
                             </div>
                         @endif
                     </div>
+                    <div class="col-12 col-md-8 mb-3">
+                        <label for="persona_nombre" class="form-label"><strong>Nombres</strong></label>
+                        <input type="text" class="form-control" id="persona_nombre" readonly
+                               value="{{ old('persona_nombre', $personaSeleccionada?->apellidoNombre() ?? '') }}"
+                               placeholder="Se completa al buscar el personero">
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>Escriba el DNI o pulse el ícono de búsqueda para elegir un personero del listado.
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" name="personero_id" id="personero_id"
+                       value="{{ old('personero_id', $personeroSelect?->personero_id ?? $personeroFijo?->personero_id) }}">
+                <div id="resultadoPersonero" class="mb-3"></div>
+                <div class="row">
                     <div class="col-12 col-md-6 mb-3">
                         <label class="form-label"><strong>Mesa de votación</strong></label>
                         <input type="text" class="form-control" readonly id="mesa_personero"
-                               value="{{ $personeroSelect?->mesa?->etiqueta() }}">
+                               value="{{ $personeroSelect?->mesa?->etiqueta() ?? $personeroFijo?->mesa?->etiqueta() }}">
                         <div class="form-text">La mesa se toma del personero seleccionado.</div>
                     </div>
                 </div>
@@ -146,16 +160,50 @@
     </div>
 </div>
 
+@if ( ! $esPersonero )
+<div class="modal fade" id="modalPersoneros" tabindex="-1" aria-labelledby="modalPersonerosLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalPersonerosLabel">
+                    <i class="fas fa-user-check me-2"></i>Seleccionar personero
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped table-hover w-100" id="tabla-modal-personeros">
+                        <thead>
+                            <tr>
+                                <th>DNI</th>
+                                <th>Personero</th>
+                                <th>Mesa</th>
+                                <th class="text-end">Acción</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 @csrf
 
 @section('footer')
     <script>
         $(document).ready(function () {
+            const urlBuscar = "{{ route('votos.buscarPersonero') }}";
             const urlConteo = "{{ url('votos/personero') }}";
+            const $form = $('form').first();
+            const $dni = $('#dni_buscar');
+            const $nombre = $('#persona_nombre');
             const $personero = $('#personero_id');
             const $mesa = $('#mesa_personero');
+            const $resultado = $('#resultadoPersonero');
+            const $btnRegistrar = $('#btnRegistrarPersonero');
 
-            // Vuelca los conteos recibidos en los inputs de votos.
             const pintarConteos = function (conteos) {
                 $('input[name^="votos["]').each(function () {
                     const nombre = $(this).attr('name') || '';
@@ -164,26 +212,101 @@
                 });
             };
 
-            // Al elegir un personero (solo administrador) se precarga su conteo y su mesa.
-            if ($personero.is('select')) {
-                $personero.on('change', function () {
-                    const personeroId = $(this).val();
-                    const $opcion = $(this).find('option:selected');
-                    $mesa.val($opcion.data('mesa') || '');
+            // Resetea el formulario inferior (mesa + votos) al cambiar de personero.
+            const resetearConteo = function () { $mesa.val(''); pintarConteos({}); };
+            const pintarResultado = function (tipo, mensaje) {
+                if (!$resultado.length) { return; }
+                $resultado.html('<p class="alert alert-' + tipo + ' py-2 mb-0">' + mensaje + '</p>');
+            };
+            const fijarPersonero = function (personeroId, nombre, mesa, conteos) {
+                $personero.val(personeroId); $nombre.val(nombre || '');
+                $mesa.val(mesa || ''); pintarConteos(conteos || {});
+            };
+            const limpiarPersonero = function () {
+                $personero.val(''); $nombre.val(''); resetearConteo();
+            };
 
-                    if (!personeroId) {
-                        pintarConteos({});
+            if ($dni.length && !$dni.prop('readonly')) {
+                const normalizar = function (v) { return (v || '').replace(/\D/g, ''); };
+                let temporizador = null;
+                const buscar = function () {
+                    const dni = normalizar($dni.val());
+                    limpiarPersonero(); $btnRegistrar.hide();
+                    if (dni.length < 8) {
+                        pintarResultado('info', 'Ingrese al menos 8 dígitos del DNI para buscar el personero.');
                         return;
                     }
-
+                    $.getJSON(urlBuscar, { dni: dni })
+                        .done(function (data) {
+                            fijarPersonero(data.personero_id, data.nombre_completo, data.mesa, data.conteos);
+                            pintarResultado('success', 'Personero encontrado: <strong>' + data.nombre_completo + '</strong> (DNI: ' + data.dni + '). Se muestran sus votos registrados.');
+                        })
+                        .fail(function (xhr) {
+                            const mensaje = (xhr.responseJSON && xhr.responseJSON.mensaje) ? xhr.responseJSON.mensaje : 'No fue posible realizar la búsqueda.';
+                            pintarResultado('danger', mensaje);
+                            if (xhr.status === 404) { $btnRegistrar.show(); }
+                        });
+                };
+                $dni.on('input', function () {
+                    clearTimeout(temporizador);
+                    limpiarPersonero(); $btnRegistrar.hide();
+                    if (normalizar($dni.val()).length >= 8) { temporizador = setTimeout(buscar, 300); }
+                    else { pintarResultado('info', 'Ingrese el DNI del personero para buscarlo.'); }
+                });
+                $dni.on('keydown', function (e) {
+                    if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); buscar(); }
+                });
+                let tablaPersoneros = null;
+                $('#btnModalPersoneros').on('click', function () {
+                    limpiarPersonero(); $btnRegistrar.hide();
+                    pintarResultado('info', 'Elija un personero del listado para ver sus votos registrados.');
+                    if (!tablaPersoneros) {
+                        tablaPersoneros = $('#tabla-modal-personeros').DataTable({
+                            processing: true, serverSide: true,
+                            language: { url: "{{ asset('datatables/spanish.json') }}" },
+                            ajax: { url: "{{ route('votos.personerosModal') }}" },
+                            columns: [
+                                { data: 'dni', name: 'personas.dni' },
+                                { data: 'persona', orderable: false, searchable: false },
+                                { data: 'mesa', orderable: false, searchable: false },
+                                { data: null, orderable: false, searchable: false, className: 'text-end',
+                                  render: function (data, type, row) {
+                                      return '<button type="button" class="btn btn-sm btn-primary btn-sel-personero" data-id="' + row.personero_id + '"><i class="fas fa-check me-1"></i>Seleccionar</button>';
+                                  } },
+                            ],
+                            order: [[0, 'asc']], pageLength: 10,
+                        });
+                    }
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPersoneros')).show();
+                    setTimeout(function () { tablaPersoneros.columns.adjust(); }, 300);
+                });
+                $(document).on('click', '.btn-sel-personero', function () {
+                    const personeroId = $(this).data('id');
+                    const celdas = $(this).closest('tr').find('td');
+                    const dni = $(celdas[0]).text().trim();
+                    $dni.val(dni === '—' ? '' : dni);
+                    limpiarPersonero(); $btnRegistrar.hide();
                     $.getJSON(urlConteo + '/' + personeroId + '/conteo')
                         .done(function (data) {
-                            pintarConteos(data.conteos || {});
+                            $.getJSON(urlBuscar, { dni: $dni.val() })
+                                .done(function (detalle) {
+                                    fijarPersonero(detalle.personero_id, detalle.nombre_completo, detalle.mesa, detalle.conteos);
+                                    pintarResultado('success', 'Personero seleccionado: <strong>' + detalle.nombre_completo + '</strong>. Se muestran sus votos registrados.');
+                                })
+                                .fail(function () {
+                                    pintarResultado('danger', 'No se pudo cargar el personero seleccionado.');
+                                });
                         });
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPersoneros')).hide();
                 });
             }
 
-            $('form').on('submit', function () {
+            $form.on('submit', function () {
+                if ($personero.length && !$personero.val()) {
+                    pintarResultado('danger', 'Debe buscar al personero por su DNI antes de guardar.');
+                    $dni.focus();
+                    return false;
+                }
                 $('button[type=submit]').prop('disabled', true);
             });
         });
