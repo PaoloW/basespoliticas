@@ -11,7 +11,7 @@
 @endif
 
 <div class="row">
-    <div class="col-lg-8">
+    <div class="col-lg-8 col-md-12">
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fas fa-user-nurse me-2"></i><strong>Datos de la cuenta</strong>
@@ -90,29 +90,31 @@
                 <p class="text-muted small mb-1"><em>Seleccione los menús a los que tendrá acceso el usuario</em></p>
             </div>
             <div class="card-body">
-                @forelse ( $menus as $menu )
-                    <div class="mb-3">
-                        <div class="fw-bold mb-1"><i class="{{ $menu->icono }} me-1"></i>{{ $menu->descripcion }}</div>
-                        @foreach ( $menu->hijos as $hijo )
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="menu_ids[]"
-                                       id="menu_{{ $hijo->menu_id }}" value="{{ $hijo->menu_id }}"
-                                       @if ( in_array( (int) $hijo->menu_id, (array) $menu_ids, true ) ) checked @endif>
-                                <label class="form-check-label" for="menu_{{ $hijo->menu_id }}">
-                                    <i class="{{ $hijo->icono }} me-1"></i>{{ $hijo->descripcion }}
-                                </label>
-                            </div>
-                        @endforeach
-                    </div>
-                @empty
-                    <div class="text-muted">No hay menús registrados.</div>
-                @endforelse
+                <div class="grid-container">
+                    @forelse ( $menus as $menu )
+                        <div class="menu-group">
+                            <div class="fw-bold mb-1"><i class="{{ $menu->icono }} me-1"></i>{{ $menu->descripcion }}</div>
+                            @foreach ( $menu->hijos as $hijo )
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="menu_ids[]"
+                                           id="menu_{{ $hijo->menu_id }}" value="{{ $hijo->menu_id }}"
+                                           @if ( in_array( (int) $hijo->menu_id, (array) $menu_ids, true ) ) checked @endif>
+                                    <label class="form-check-label" for="menu_{{ $hijo->menu_id }}">
+                                        <i class="{{ $hijo->icono }} me-1"></i>{{ $hijo->descripcion }}
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                    @empty
+                        <div class="text-muted">No hay menús registrados.</div>
+                    @endforelse
+                </div>
             </div>
         </div>
 
     </div>
 
-    <div class="col-lg-4">
+    <div class="col-lg-4 col-md-12">
         <div class="card mb-4">
             <div class="card-header"><i class="fas fa-clipboard-check me-2"></i><strong>Acciones</strong></div>
             <div class="card-body">

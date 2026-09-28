@@ -6,7 +6,6 @@
 <h1 class="mt-4 h3">Gestión de votos</h1>
 <ol class="breadcrumb mb-4">
     <li class="breadcrumb-item"><a href="{{ route('home') }}">Inicio</a></li>
-    <li class="breadcrumb-item"><a href="#">Procesos</a></li>
     <li class="breadcrumb-item active">Gestión de votos</li>
 </ol>
 
