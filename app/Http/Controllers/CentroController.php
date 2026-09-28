@@ -6,6 +6,7 @@ use App\Models\Centro;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class CentroController extends Controller
 {
@@ -64,7 +65,7 @@ class CentroController extends Controller
      */
     public function update(Request $request, Centro $centro)
     {
-        $data = $this->validar($request);
+        $data = $this->validar($request, $centro);
 
         DB::transaction(function () use ($centro, $data) {
             $centro->descripcion = $data['descripcion'];
@@ -98,13 +99,20 @@ class CentroController extends Controller
     /**
      * Reglas de validación al crear o actualizar un centro de votación.
      */
-    private function validar(Request $request)
+    private function validar(Request $request, ?Centro $centro = null)
     {
         return $request->validate([
-            'descripcion' => 'required|string|max:255',
+            'descripcion' => [
+                'required', 'string', 'max:255',
+                Rule::unique('centros', 'descripcion')
+                    ->whereNull('deleted_at')
+                    ->ignore($centro?->centro_id, 'centro_id'),
+            ],
             'ubicacion' => 'nullable|string|max:255',
             'distrito' => 'nullable|string|max:255',
-        ], [], [
+        ], [
+            'descripcion.unique' => 'Ya existe un centro de votación con esa descripción.',
+        ], [
             'descripcion' => 'descripción',
             'ubicacion' => 'ubicación',
             'distrito' => 'distrito',

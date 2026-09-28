@@ -35,13 +35,21 @@
                             <input type="text" class="form-control" id="dni_buscar" name="dni_buscar"
                                    value="{{ old('dni_buscar', $personaSeleccionada->dni ?? '') }}"
                                    placeholder="Ingrese el DNI" spellcheck="false" autocorrect="off"
-                                   autocapitalize="off" autocomplete="off" inputmode="numeric" maxlength="20"
+                                   autocapitalize="off" autocomplete="off" inputmode="numeric" maxlength="8"
                                    @if ( $esEdicion ) readonly @endif>
                             <button type="button" class="btn btn-outline-primary" id="btnModalPersonas"
                                     data-bs-toggle="tooltip" title="Buscar persona en el listado"
                                     @if ( $esEdicion ) disabled @endif>
-                                <i class="fas fa-search me-1"></i>Buscar
+                                <i class="fas fa-search"></i>
                             </button>
+                            @unless ( $esEdicion )
+                                {{-- Se muestra solo cuando el DNI consultado no existe --}}
+                                <a class="btn btn-outline-success" id="btnRegistrarPersona"
+                                   href="{{ route('personas.create') }}" style="display: none;"
+                                   data-bs-toggle="tooltip" title="Registrar persona nueva con este DNI">
+                                    <i class="fas fa-plus"></i>
+                                </a>
+                            @endunless
                         </div>
                     </div>
                     <div class="col-12 col-md-8 mb-3">
@@ -50,7 +58,7 @@
                                value="{{ old('persona_nombre', $personaSeleccionada?->apellidoNombre() ?? '') }}"
                                placeholder="Se completa al buscar la persona">
                         <div class="form-text">
-                            <i class="fas fa-info-circle me-1"></i>Escriba el DNI o use <strong>Buscar</strong> para elegir una persona del listado.
+                            <i class="fas fa-info-circle me-1"></i>Escriba el DNI o pulse el ícono de búsqueda para elegir una persona del listado.
                         </div>
                     </div>
                 </div>
@@ -258,6 +266,23 @@
             const $resultadoBase = $('#resultadoBase');
             const $resultadoCargo = $('#resultadoCargo');
 
+            // Botón "+" para registrar la persona cuando el DNI no existe.
+            const $btnRegistrarPersona = $('#btnRegistrarPersona');
+            const urlRegistroPersona = '{{ route('personas.create') }}';
+
+            const mostrarBtnRegistrar = function (dni) {
+                if (!$btnRegistrarPersona.length) {
+                    return;
+                }
+                $btnRegistrarPersona
+                    .attr('href', urlRegistroPersona + '?dni=' + encodeURIComponent(dni))
+                    .show();
+            };
+
+            const ocultarBtnRegistrar = function () {
+                $btnRegistrarPersona.hide();
+            };
+
             const establecerPersona = function (id, dni, nombre) {
                 $personaId.val(id);
                 $dni.val(dni);
@@ -267,6 +292,7 @@
             const limpiarPersona = function () {
                 $personaId.val('');
                 $personaNombre.val('');
+                ocultarBtnRegistrar();
             };
 
             const buscarPersona = function () {
@@ -278,6 +304,7 @@
                 }
                 $.getJSON("{{ route('afiliados.buscarPersona') }}", { dni: dni })
                     .done(function (data) {
+                        ocultarBtnRegistrar();
                         establecerPersona(data.persona_id, data.dni, data.nombre_completo);
                         pintar($resultadoPersona, 'success', 'Persona seleccionada: <strong>' + data.nombre_completo + '</strong>');
                     })
@@ -287,6 +314,10 @@
                             ? xhr.responseJSON.mensaje
                             : 'No fue posible realizar la búsqueda.';
                         pintar($resultadoPersona, 'danger', mensaje);
+                        // Si el DNI no existe se ofrece registrar la persona.
+                        if (xhr.status === 404) {
+                            mostrarBtnRegistrar(dni);
+                        }
                     });
             };
 

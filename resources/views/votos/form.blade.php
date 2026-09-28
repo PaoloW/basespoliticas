@@ -10,86 +10,104 @@
     </div>
 @endif
 
-@unless ( $esEdicion )
-    @if ( $partidos->isEmpty() )
-        <div class="alert alert-info" role="alert">
-            <i class="fas fa-info-circle me-1"></i>No hay partidos registrados. Regístrelos en el módulo
-            <a href="{{ route('partidos.index') }}" class="alert-link">Partidos</a>.
-        </div>
-    @endif
-    @if ( $personas->isEmpty() )
-        <div class="alert alert-info" role="alert">
-            <i class="fas fa-info-circle me-1"></i>No hay personas registradas. Regístrelas en el módulo
-            <a href="{{ route('personas.index') }}" class="alert-link">Personas</a>.
-        </div>
-    @endif
-@endunless
+@php
+    $esEdicion = $esEdicion ?? false;
+    $esPersonero = ! empty( $personeroActual );
+    $personeroFijo = $esPersonero ? $personeroActual : ( $personero ?? null );
+    $conteoActual = $conteos ?? [];
+    $personeroSelect = $personeroSel ?? $personeroFijo;
+    // Usuario sin registro de personero ni opción de elegir uno.
+    $sinPersonero = ! $esEdicion && ! $esPersonero && $personeros->isEmpty();
+@endphp
+
+@if ( $sinPersonero )
+    <div class="alert alert-warning" role="alert">
+        <i class="fas fa-exclamation-triangle me-1"></i>Su usuario no está asociado a ningún personero.
+        Solicite al administrador que lo registre como personero para registrar el conteo de votos.
+    </div>
+@endif
 
 <div class="row">
     <div class="col-lg-8">
         <div class="card mb-4">
             <div class="card-header">
-                <i class="fas fa-vote-yea me-2"></i><strong>Datos del voto</strong>
+                <i class="fas fa-vote-yea me-2"></i><strong>Datos del conteo</strong>
                 <p class="small text-muted my-1"><em>Los campos resaltados son obligatorios</em></p>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-12 col-md-6 mb-3">
-                        @if ( $esEdicion )
-                            <label class="form-label"><strong>Partido</strong></label>
-                            <input type="text" class="form-control" readonly value="{{ $voto->partido?->nombre }}">
-                        @else
-                            <label for="partido_id" class="form-label"><strong>Partido</strong></label>
-                            <select class="form-select" name="partido_id" id="partido_id" required>
-                                <option value="">Seleccione un partido</option>
-                                @forelse ( $partidos as $partido )
-                                    <option value="{{ $partido->partido_id }}"
-                                            @if ( old( 'partido_id', $voto->partido_id ) == $partido->partido_id ) selected @endif>
-                                        {{ $partido->nombre }}
-                                    </option>
-                                @empty
-                                    <option value="" disabled>No hay partidos registrados</option>
-                                @endforelse
-                            </select>
-                            <div class="form-text">Partidos registrados en el módulo <a href="{{ route('partidos.index') }}">Partidos</a>.</div>
-                        @endif
-                    </div>
-
-                    <div class="col-12 col-md-6 mb-3">
-                        @if ( $esEdicion )
-                            <label class="form-label"><strong>Persona</strong></label>
+                        <label class="form-label"><strong>Personero</strong></label>
+                        @if ( $esPersonero || $esEdicion )
                             <input type="text" class="form-control" readonly
-                                   value="{{ $voto->persona?->apellidoNombre() }} (DNI: {{ $voto->persona?->dni }})">
-                            <div class="form-text">
-                                Código de mesa: <strong>{{ $voto->codigoMesa() ?? '—' }}</strong>
-                                (registrado en el módulo Personas).
-                            </div>
+                                   value="{{ $personeroFijo?->persona?->apellidoNombre() }} (DNI: {{ $personeroFijo?->persona?->dni }})">
+                            <input type="hidden" name="personero_id" id="personero_id" value="{{ $personeroFijo?->personero_id }}">
                         @else
-                            <label for="persona_id" class="form-label"><strong>Persona</strong></label>
-                            <select class="form-select" name="persona_id" id="persona_id" required>
-                                <option value="">Seleccione una persona</option>
-                                @forelse ( $personas as $persona )
-                                    <option value="{{ $persona->persona_id }}"
-                                            @if ( old( 'persona_id', $voto->persona_id ) == $persona->persona_id ) selected @endif>
-                                        {{ $persona->apellidoNombre() }} — DNI {{ $persona->dni }}{{ $persona->codigo_mesa ? ' — Mesa '.$persona->codigo_mesa : ' — sin código de mesa' }}
+                            <select class="form-select" name="personero_id" id="personero_id" required>
+                                <option value="">Seleccione un personero</option>
+                                @forelse ( $personeros as $personeroItem )
+                                    <option value="{{ $personeroItem->personero_id }}"
+                                            data-mesa="{{ $personeroItem->mesa?->etiqueta() }}"
+                                            @if ( old( 'personero_id', $personeroSelect?->personero_id ) == $personeroItem->personero_id ) selected @endif>
+                                        {{ $personeroItem->persona?->apellidoNombre() }} — DNI {{ $personeroItem->persona?->dni }} — {{ $personeroItem->mesa?->etiqueta() }}
                                     </option>
                                 @empty
-                                    <option value="" disabled>No hay personas registradas</option>
+                                    <option value="" disabled>No hay personeros registrados</option>
                                 @endforelse
                             </select>
-                            <div class="form-text">Personas del módulo <a href="{{ route('personas.index') }}">Personas</a> con su código de mesa.</div>
+                            <div class="form-text">
+                                Registre personeros en el módulo <a href="{{ route('personeros.index') }}">Personeros</a>.
+                            </div>
                         @endif
                     </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-12 col-md-4 mb-3">
-                        <label for="votos" class="form-label"><strong>Votos actuales</strong></label>
-                        <input type="number" class="form-control" id="votos" name="votos"
-                               value="{{ old( 'votos', $voto->votos ) }}" min="0" step="1" required>
-                        <div class="form-text">Cantidad de votos registrada actualmente.</div>
+                    <div class="col-12 col-md-6 mb-3">
+                        <label class="form-label"><strong>Mesa de votación</strong></label>
+                        <input type="text" class="form-control" readonly id="mesa_personero"
+                               value="{{ $personeroSelect?->mesa?->etiqueta() }}">
+                        <div class="form-text">La mesa se toma del personero seleccionado.</div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+<div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-list-ol me-2"></i><strong>Conteo de votos por partido</strong>
+                <p class="small text-muted my-1"><em>Registre la cantidad de votos de cada partido</em></p>
+            </div>
+            <div class="card-body">
+                @if ( $partidos->isEmpty() )
+                    <div class="alert alert-info mb-0" role="alert">
+                        <i class="fas fa-info-circle me-1"></i>No hay partidos registrados. Regístrelos en el módulo
+                        <a href="{{ route('partidos.index') }}" class="alert-link">Partidos</a>.
+                    </div>
+                @else
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width: 65%">Partido</th>
+                                    <th class="text-center">Nro de votos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ( $partidos as $partido )
+                                <tr>
+                                    <td>
+                                        {{-- Partido bloqueado: solo lectura --}}
+                                        <input type="text" class="form-control" value="{{ $partido->nombre }}" readonly tabindex="-1">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control text-center" min="0" step="1" required
+                                               name="votos[{{ $partido->partido_id }}]"
+                                               value="{{ old( 'votos.'.$partido->partido_id, $conteoActual[$partido->partido_id] ?? 0 ) }}">
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -103,12 +121,11 @@
                     <p class="small text-muted mb-3">Última edición: {{ $voto->updated_at?->format('d/m/Y H:i') }}</p>
                 @else
                     <p class="small text-muted mb-3">
-                        Seleccione el partido y la persona, y escriba la cantidad de votos actuales.
-                        Un partido solo tiene un registro de votos por persona.
+                        Registre la cantidad de votos de cada partido. Se guarda un conteo por personero y partido.
                     </p>
                 @endif
                 <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" @if ( $partidos->isEmpty() || $sinPersonero ) disabled @endif>
                         <i class="fas fa-save me-2"></i>Guardar
                     </button>
                     <a class="btn btn-secondary" href="{{ route('votos.index') }}">
@@ -125,6 +142,38 @@
 @section('footer')
     <script>
         $(document).ready(function () {
+            const urlConteo = "{{ url('votos/personero') }}";
+            const $personero = $('#personero_id');
+            const $mesa = $('#mesa_personero');
+
+            // Vuelca los conteos recibidos en los inputs de votos.
+            const pintarConteos = function (conteos) {
+                $('input[name^="votos["]').each(function () {
+                    const nombre = $(this).attr('name') || '';
+                    const partidoId = nombre.replace(/[^0-9]/g, '');
+                    $(this).val((conteos && conteos[partidoId] !== undefined) ? conteos[partidoId] : 0);
+                });
+            };
+
+            // Al elegir un personero (solo administrador) se precarga su conteo y su mesa.
+            if ($personero.is('select')) {
+                $personero.on('change', function () {
+                    const personeroId = $(this).val();
+                    const $opcion = $(this).find('option:selected');
+                    $mesa.val($opcion.data('mesa') || '');
+
+                    if (!personeroId) {
+                        pintarConteos({});
+                        return;
+                    }
+
+                    $.getJSON(urlConteo + '/' + personeroId + '/conteo')
+                        .done(function (data) {
+                            pintarConteos(data.conteos || {});
+                        });
+                });
+            }
+
             $('form').on('submit', function () {
                 $('button[type=submit]').prop('disabled', true);
             });

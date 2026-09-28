@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Ver Conteo de Votos')
+@section('title', 'Gestión de Personeros')
 
 @section('content')
-<h1 class="mt-4 h3">Conteo de votos</h1>
+<h1 class="mt-4 h3">Personeros</h1>
 <ol class="breadcrumb mb-4">
     <li class="breadcrumb-item"><a href="{{ route('home') }}">Inicio</a></li>
-    <li class="breadcrumb-item active">Ver conteo de votos</li>
+    <li class="breadcrumb-item active">Personeros</li>
 </ol>
 
 @if ( session('success') )
@@ -27,52 +27,16 @@
     </div>
 @endif
 
-<div class="row">
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card text-white bg-primary h-100">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="text-uppercase small opacity-75">Personeros con conteo</div>
-                    <div class="fw-bold fs-4">{{ $personeros->count() }}</div>
-                </div>
-                <i class="fas fa-user-check fa-2x opacity-50"></i>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card text-white bg-success h-100">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="text-uppercase small opacity-75">Total de votos</div>
-                    <div class="fw-bold fs-4">{{ number_format($totalVotos) }}</div>
-                </div>
-                <i class="fas fa-vote-yea fa-2x opacity-50"></i>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card text-white bg-dark h-100">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="text-uppercase small opacity-75">Partidos con conteo</div>
-                    <div class="fw-bold fs-4">{{ $totalPartidos }}</div>
-                </div>
-                <i class="fas fa-flag fa-2x opacity-50"></i>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="card mb-4">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
-        <div><i class="fas fa-chart-line me-2"></i>Conteos registrados por personero</div>
-        <a class="btn btn-sm btn-primary" href="{{ route('votos.registrar') }}">
-            <i class="fas fa-plus me-1"></i>Registrar conteo
+        <div><i class="fas fa-user-check me-2"></i>Listado de personeros</div>
+        <a class="btn btn-sm btn-primary" href="{{ route('personeros.create') }}">
+            <i class="fas fa-plus me-1"></i>Nuevo
         </a>
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-sm table-striped table-hover w-100" id="tabla-conteos">
+            <table class="table table-sm table-striped table-hover w-100" id="tabla-personeros">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -80,9 +44,8 @@
                         <th>DNI</th>
                         <th>Mesa</th>
                         <th>Centro de votación</th>
-                        <th class="text-center">Partidos</th>
-                        <th class="text-center">Total de votos</th>
-                        <th class="text-center">Último conteo</th>
+                        <th class="text-center">Usuario</th>
+                        <th class="text-center">Conteos</th>
                         <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
@@ -94,14 +57,29 @@
                         <td>{{ $personero->persona?->dni ?? '—' }}</td>
                         <td>{{ $personero->mesa?->etiqueta() ?? '—' }}</td>
                         <td>{{ $personero->mesa?->centro?->descripcion ?? '—' }}</td>
-                        <td class="text-center">{{ $personero->votos_count }}</td>
-                        <td class="text-center fw-bold">{{ $personero->total_votos ?? 0 }}</td>
-                        <td class="text-center text-nowrap">
-                            {{ $personero->ultimo_conteo ? \Illuminate\Support\Carbon::parse($personero->ultimo_conteo)->format('d/m/Y H:i') : '—' }}
+                        <td class="text-center">
+                            @if ( $personero->persona?->usuario )
+                                <i class="fas fa-check-circle text-success" data-bs-toggle="tooltip" title="Cuenta creada"></i>
+                            @else
+                                <i class="fas fa-times-circle text-danger" data-bs-toggle="tooltip" title="Sin cuenta"></i>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-primary">{{ $personero->votos_count }}</span>
                         </td>
                         <td class="text-end text-nowrap">
-                            <a class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Revisar / editar conteo"
-                               href="{{ route('votos.registrar', ['personero_id' => $personero->personero_id]) }}"><i class="fas fa-edit"></i></a>
+                            <a class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Registrar conteo de votos"
+                               href="{{ route('votos.registrar', ['personero_id' => $personero->personero_id]) }}"><i class="fas fa-vote-yea"></i></a>
+                            <a class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Editar"
+                               href="{{ route('personeros.edit', $personero) }}"><i class="fas fa-edit"></i></a>
+                            <form action="{{ route('personeros.destroy', $personero) }}" method="POST" class="d-inline"
+                                  data-confirm="¿Realmente desea eliminar este personero?">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     @empty
@@ -121,14 +99,14 @@
                 extend: extend,
                 text: '<i class="' + icono + ' me-1"></i>' + texto,
                 className: 'btn btn-sm ' + clase,
-                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7] },
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6] },
             });
 
-            $('#tabla-conteos').DataTable({
+            $('#tabla-personeros').DataTable({
                 language: { url: "{{ asset('datatables/spanish.json') }}" },
                 dom: '<"row mb-3"<"col-sm-12 col-md-6"B><"col-sm-12 col-md-6"f>>rt' +
                      '<"row mt-3"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"p>>',
-                order: [[6, 'desc']],
+                order: [[0, 'asc']],
                 pageLength: 25,
                 lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'Todos']],
                 buttons: [
@@ -136,6 +114,18 @@
                     botonExportar('excel', 'Excel', 'fas fa-file-excel', 'btn-outline-success'),
                     botonExportar('pdf', 'PDF', 'fas fa-file-pdf', 'btn-outline-danger'),
                 ],
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            [].slice.call(document.querySelectorAll('form[data-confirm]')).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!window.confirm(form.getAttribute('data-confirm'))) {
+                        event.preventDefault();
+                    }
+                });
             });
         });
     </script>

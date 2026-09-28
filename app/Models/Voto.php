@@ -32,8 +32,8 @@ class Voto extends Model
      */
     protected $fillable = [
         'voto_id',
+        'personero_id',
         'partido_id',
-        'persona_id',
         'votos',
         'autor_id',
         'editor_id',
@@ -58,19 +58,19 @@ class Voto extends Model
     */
 
     /**
+     * El personero que reporta el conteo.
+     */
+    public function personero(): BelongsTo
+    {
+        return $this->belongsTo(Personero::class, 'personero_id', 'personero_id');
+    }
+
+    /**
      * El partido cuyos votos se registran.
      */
     public function partido(): BelongsTo
     {
         return $this->belongsTo(Partido::class, 'partido_id', 'partido_id');
-    }
-
-    /**
-     * La persona (personero) que reporta los votos.
-     */
-    public function persona(): BelongsTo
-    {
-        return $this->belongsTo(Persona::class, 'persona_id', 'persona_id');
     }
 
     /*
@@ -80,11 +80,11 @@ class Voto extends Model
     */
 
     /**
-     * Código de mesa de la persona del registro.
+     * Etiqueta de la mesa del personero que reportó los votos.
      */
     public function codigoMesa(): ?string
     {
-        return $this->persona?->codigo_mesa;
+        return $this->personero?->mesa?->etiqueta();
     }
 
     /*
@@ -100,10 +100,10 @@ class Voto extends Model
     {
         return [
             'voto_id' => $this->voto_id,
+            'personero_id' => $this->personero_id,
             'partido_id' => $this->partido_id,
-            'persona_id' => $this->persona_id,
+            'personero' => $this->personero?->toRepresentacion(),
             'partido' => $this->partido?->toRepresentacion(),
-            'persona' => $this->persona?->toRepresentacion(),
             'codigo_mesa' => $this->codigoMesa(),
             'votos' => $this->votos ?? 0,
         ];

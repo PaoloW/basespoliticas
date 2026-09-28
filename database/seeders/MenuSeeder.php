@@ -37,7 +37,8 @@ class MenuSeeder extends Seeder
                 'hijos' => [
                     ['descripcion' => 'Afiliados a bases', 'icono' => 'pi pi-user-plus'],
                     ['descripcion' => 'Personeros', 'icono' => 'pi pi-verified'],
-                    ['descripcion' => 'Gestión de votos', 'icono' => 'pi pi-chart-line'],
+                    ['descripcion' => 'Ver conteo de votos', 'icono' => 'pi pi-chart-line'],
+                    ['descripcion' => 'Registrar conteo de votos', 'icono' => 'pi pi-pencil'],
                 ],
             ],
             'Reportes' => [

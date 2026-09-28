@@ -7,6 +7,7 @@ use App\Models\Partido;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class BaseController extends Controller
 {
@@ -69,7 +70,7 @@ class BaseController extends Controller
      */
     public function update(Request $request, Base $base)
     {
-        $data = $this->validar($request);
+        $data = $this->validar($request, $base);
 
         DB::transaction(function () use ($base, $data) {
             $base->partido_id = $data['partido_id'] ?? null;
@@ -103,13 +104,20 @@ class BaseController extends Controller
     /**
      * Reglas de validación al crear o actualizar una base.
      */
-    private function validar(Request $request)
+    private function validar(Request $request, ?Base $base = null)
     {
         return $request->validate([
             'partido_id' => 'nullable|integer|exists:partidos,partido_id',
-            'descripcion' => 'required|string|max:255',
+            'descripcion' => [
+                'required', 'string', 'max:255',
+                Rule::unique('bases', 'descripcion')
+                    ->whereNull('deleted_at')
+                    ->ignore($base?->base_id, 'base_id'),
+            ],
             'ubicacion' => 'nullable|string|max:255',
-        ], [], [
+        ], [
+            'descripcion.unique' => 'Ya existe una base con esa descripción.',
+        ], [
             'partido_id' => 'partido',
             'descripcion' => 'descripción',
             'ubicacion' => 'ubicación',

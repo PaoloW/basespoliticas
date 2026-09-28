@@ -19,22 +19,7 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-12 col-md-6 mb-3">
-                        <label for="partido_id" class="form-label"><strong>Partido</strong></label>
-                        <select class="form-select" name="partido_id" id="partido_id">
-                            <option value="">Seleccione un partido</option>
-                            @forelse ( $partidos as $partido )
-                                <option value="{{ $partido->partido_id }}"
-                                        @if ( old( 'partido_id', $base->partido_id ) == $partido->partido_id ) selected @endif>
-                                    {{ $partido->nombre }}
-                                </option>
-                            @empty
-                                <option value="" disabled>No hay partidos registrados</option>
-                            @endforelse
-                        </select>
-                        <div class="form-text">Partidos del módulo <a href="{{ route('partidos.index') }}">Partidos</a>.</div>
-                    </div>
-                    <div class="col-12 col-md-6 mb-3">
+                    <div class="col-12 mb-3">
                         <label for="descripcion" class="form-label"><strong>Descripción</strong></label>
                         <input type="text" class="form-control" id="descripcion" name="descripcion"
                                value="{{ old('descripcion', $base->descripcion) }}" maxlength="255" required>

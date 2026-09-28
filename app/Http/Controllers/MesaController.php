@@ -7,6 +7,7 @@ use App\Models\Mesa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class MesaController extends Controller
 {
@@ -69,7 +70,7 @@ class MesaController extends Controller
      */
     public function update(Request $request, Mesa $mesa)
     {
-        $data = $this->validar($request);
+        $data = $this->validar($request, $mesa);
 
         DB::transaction(function () use ($mesa, $data) {
             $mesa->descripcion = $data['descripcion'] ?? null;
@@ -103,13 +104,22 @@ class MesaController extends Controller
     /**
      * Reglas de validación al crear o actualizar una mesa de votación.
      */
-    private function validar(Request $request)
+    private function validar(Request $request, ?Mesa $mesa = null)
     {
         return $request->validate([
-            'descripcion' => 'nullable|integer|min:1',
+            'descripcion' => [
+                'nullable', 'integer', 'min:1',
+                Rule::unique('mesas', 'descripcion')
+                    ->where(fn ($query) => $query
+                        ->where('centro_id', $request->input('centro_id'))
+                        ->whereNull('deleted_at'))
+                    ->ignore($mesa?->mesa_id, 'mesa_id'),
+            ],
             'centro_id' => 'required|integer|exists:centros,centro_id',
             'votantes' => 'nullable|integer|min:0',
-        ], [], [
+        ], [
+            'descripcion.unique' => 'Ya existe una mesa con ese número en el centro de votación seleccionado.',
+        ], [
             'descripcion' => 'número de mesa',
             'centro_id' => 'centro de votación',
             'votantes' => 'votantes',

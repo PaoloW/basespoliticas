@@ -42,6 +42,7 @@ class Usuario extends Authenticatable
     protected $fillable = [
         'usuario_id',
         'persona_id',
+        'tema',
         'autor_id',
         'editor_id',
     ];
@@ -140,6 +141,21 @@ class Usuario extends Authenticatable
     public function tieneAcceso(int $menuId): bool
     {
         return $this->accesos()->where('menu_id', $menuId)->exists();
+    }
+
+    /**
+     * Indica si el usuario tiene acceso a un menú por su descripción.
+     * El administrador del sistema siempre tiene acceso.
+     */
+    public function tieneAccesoDescripcion(string $descripcion): bool
+    {
+        if ($this->esAdmin()) {
+            return true;
+        }
+
+        return $this->accesos()
+            ->whereHas('menu', fn ($query) => $query->where('descripcion', $descripcion))
+            ->exists();
     }
 
     /**

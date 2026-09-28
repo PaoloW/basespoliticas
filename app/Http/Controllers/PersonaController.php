@@ -24,12 +24,14 @@ class PersonaController extends Controller
 
     /**
      * Formulario para registrar una nueva persona.
+     * Se pre-carga el DNI cuando se llega desde una búsqueda fallida (?dni=).
      */
-    public function create()
+    public function create(Request $request)
     {
         $persona = new Persona();
         // La clave primaria de persona no es autoincremental; se asigna el siguiente id libre.
         $persona->persona_id = (Persona::withTrashed()->max('persona_id') ?? 0) + 1;
+        $persona->dni = $request->query('dni');
 
         return view('personas.create', compact('persona'));
     }
@@ -112,7 +114,7 @@ class PersonaController extends Controller
      */
     private function validar(Request $request, ?Persona $persona = null)
     {
-        $dni = 'required|string|max:255|unique:personas,dni';
+        $dni = 'required|string|max:8|unique:personas,dni';
         if ($persona) {
             $dni .= ','.$persona->persona_id.',persona_id';
         }

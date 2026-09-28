@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Actualizar Votos')
+@section('title', 'Actualizar Conteo de Votos')
 
 @section('content')
 
@@ -11,11 +11,11 @@
         <li class="breadcrumb-item active">Actualizar</li>
     </ol>
 
-    <form action="{{ route( 'votos.update', [ 'voto' => $voto ] ) }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ route( 'votos.update', [ 'voto' => $voto ] ) }}" method="POST">
 
         @method('PUT')
 
-        @include( 'votos.form', [ 'titulo' => 'Actualizar Votos', 'esEdicion' => true ] )
+        @include( 'votos.form', [ 'titulo' => 'Actualizar Conteo de Votos', 'esEdicion' => true ] )
 
     </form>
 

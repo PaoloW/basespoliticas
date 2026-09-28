@@ -101,14 +101,6 @@ class Persona extends Model
         return $this->hasMany(Personero::class, 'persona_id', 'persona_id');
     }
 
-    /**
-     * Los registros de votos reportados por la persona.
-     */
-    public function votos(): HasMany
-    {
-        return $this->hasMany(Voto::class, 'persona_id', 'persona_id');
-    }
-
     /*
     |--------------------------------------------------------------------------
     | Conversión y formateo de datos

@@ -10,6 +10,13 @@
 
     <ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
         @auth
+            <li class="nav-item me-1">
+                {{-- Alternar entre modo claro y modo oscuro (se guarda en el usuario) --}}
+                <button type="button" class="nav-link btn btn-link" id="btnTema"
+                        data-bs-toggle="tooltip" title="Cambiar a modo oscuro">
+                    <i class="fas fa-moon fa-fw" id="iconoTema"></i>
+                </button>
+            </li>
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button"
                    data-bs-toggle="dropdown" aria-expanded="false">
@@ -35,3 +42,45 @@
         @endauth
     </ul>
 </nav>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const btnTema = document.getElementById('btnTema');
+        if (!btnTema) {
+            return;
+        }
+
+        const etiquetaHtml = document.documentElement;
+        const iconoTema = document.getElementById('iconoTema');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // Aplica el tema en la interfaz y actualiza icono y tooltip.
+        const aplicarTema = function (tema) {
+            etiquetaHtml.setAttribute('data-bs-theme', tema);
+            iconoTema.className = (tema === 'dark' ? 'fas fa-sun' : 'fas fa-moon') + ' fa-fw';
+            const texto = tema === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+            btnTema.setAttribute('title', texto);
+            btnTema.setAttribute('data-bs-original-title', texto);
+        };
+
+        aplicarTema(etiquetaHtml.getAttribute('data-bs-theme') || 'light');
+
+        btnTema.addEventListener('click', function () {
+            const tema = etiquetaHtml.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+            aplicarTema(tema);
+
+            // Persiste la preferencia en la tabla de usuarios.
+            fetch('{{ route('usuarios.tema') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({ tema: tema }),
+            }).catch(function (error) {
+                console.error(error);
+            });
+        });
+    });
+</script>

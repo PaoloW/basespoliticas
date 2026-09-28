@@ -3,103 +3,130 @@
 namespace App\Http\Controllers;
 
 use App\Models\Partido;
-use App\Models\Persona;
+use App\Models\Personero;
 use App\Models\Voto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class VotoController extends Controller
 {
     /**
-     * Listado de votos registrados por partido y persona.
+     * Reporte de conteos: personeros que registraron votos y su total.
      */
     public function index()
     {
-        $votos = Voto::with(['partido', 'persona'])
-            ->latest('voto_id')
-            ->get();
+        $personeroActual = $this->personeroAutenticado();
 
-        return view('votos.index', compact('votos'));
+        $consulta = Personero::with(['persona', 'mesa.centro'])
+            ->withCount('votos')
+            ->withSum('votos as total_votos', 'votos')
+            ->withMax('votos as ultimo_conteo', 'updated_at')
+            ->whereHas('votos');
+
+        // Un personero solo ve su propio conteo; el administrador ve todos.
+        if ($personeroActual && ! Auth::user()?->esAdmin()) {
+            $consulta->where('personero_id', $personeroActual->personero_id);
+        }
+
+        $personeros = $consulta->get()
+            ->sortByDesc(fn (Personero $personero) => $personero->total_votos)
+            ->values();
+
+        $totalVotos = (int) $personeros->sum('total_votos');
+        $totalPartidos = (int) Voto::distinct()->count('partido_id');
+
+        return view('votos.index', compact('personeros', 'totalVotos', 'totalPartidos'));
     }
 
     /**
-     * Formulario para registrar votos.
+     * Formulario directo de registro del conteo de votos.
+     *
+     * El personero se obtiene del usuario activo (a través de su persona_id);
+     * el administrador puede elegir otro personero desde el selector.
      */
-    public function create()
+    public function registrar(Request $request)
     {
         $voto = new Voto();
         $partidos = $this->partidosOrdenados();
-        $personas = $this->personasOrdenadas();
+        $personeroActual = $this->personeroAutenticado();
+        $esAdmin = (bool) Auth::user()?->esAdmin();
 
-        return view('votos.create', compact('voto', 'partidos', 'personas'));
+        // Personero del formulario: el del usuario activo o el recibido por parámetro.
+        $personeroSel = $personeroActual
+            ?? ($request->filled('personero_id') ? Personero::with('mesa')->find($request->input('personero_id')) : null);
+
+        // Solo el administrador puede registrar el conteo de otro personero.
+        $personeros = ($personeroActual || ! $esAdmin) ? collect() : $this->personerosOrdenados();
+        $conteos = $this->conteosDe($personeroSel?->personero_id);
+
+        return view('votos.registrar', compact('voto', 'partidos', 'personeros', 'personeroActual', 'personeroSel', 'conteos'));
     }
 
     /**
-     * Almacena los votos del partido y la persona seleccionados.
+     * Guarda el conteo por cada partido del personero.
      */
-    public function store(Request $request)
+    public function guardar(Request $request)
     {
-        $data = $this->validar($request);
+        $personeroActual = $this->personeroAutenticado();
 
-        $existente = Voto::withTrashed()
-            ->where('partido_id', $data['partido_id'])
-            ->where('persona_id', $data['persona_id'])
-            ->first();
-
-        // Un partido solo tiene un registro de votos por persona.
-        if ($existente && ! $existente->trashed()) {
-            $nombre = $existente->persona?->apellidoNombre() ?? 'Sin nombre';
-            $partido = $existente->partido?->nombre ?? 'Sin partido';
-
-            throw ValidationException::withMessages([
-                'persona_id' => 'La persona '.$nombre.' ya tiene votos registrados para el partido '.$partido.'.',
-            ])->redirectTo(route('votos.create'));
+        // Un personero solo registra su propio conteo.
+        if ($personeroActual) {
+            $request->merge(['personero_id' => $personeroActual->personero_id]);
         }
 
-        DB::transaction(function () use ($data, $existente) {
-            // Un registro eliminado antes se reactiva con los votos actuales.
-            $voto = $existente ?? new Voto();
+        $data = $this->validar($request);
+        $conteos = $this->normalizarConteos($request);
 
-            if ($existente) {
-                $voto->restore();
-            } else {
-                $voto->partido_id = $data['partido_id'];
-                $voto->persona_id = $data['persona_id'];
-                $voto->autor_id = Auth::id();
+        DB::transaction(function () use ($data, $conteos) {
+            foreach ($conteos as $partidoId => $votos) {
+                $this->guardarConteo((int) $data['personero_id'], $partidoId, $votos, Auth::id());
             }
-
-            $voto->votos = $data['votos'];
-            $voto->editor_id = Auth::id();
-            $voto->save();
         });
 
-        return redirect()->route('votos.index')->with('success', 'Votos registrados correctamente.');
+        return redirect()->route('votos.index')->with('success', 'Conteo de votos registrado correctamente.');
     }
 
     /**
-     * Formulario para actualizar los votos de un registro.
+     * Formulario para actualizar el conteo completo de un personero.
      */
     public function edit(Voto $voto)
     {
-        return view('votos.edit', compact('voto'));
+        $personero = $voto->personero;
+        $partidos = $this->partidosOrdenados();
+        $conteos = $this->conteosDe($voto->personero_id);
+
+        return view('votos.edit', compact('voto', 'personero', 'partidos', 'conteos'));
     }
 
     /**
-     * Actualiza la cantidad de votos actuales.
+     * Actualiza el conteo por cada partido del personero del registro.
      */
     public function update(Request $request, Voto $voto)
     {
-        $data = $this->validar($request, false);
+        $request->merge(['personero_id' => $voto->personero_id]);
 
-        DB::transaction(function () use ($voto, $data) {
-            $voto->votos = $data['votos'];
-            $voto->editor_id = Auth::id();
-            $voto->save();
+        $data = $this->validar($request);
+        $conteos = $this->normalizarConteos($request);
+
+        DB::transaction(function () use ($data, $conteos) {
+            foreach ($conteos as $partidoId => $votos) {
+                $this->guardarConteo((int) $data['personero_id'], $partidoId, $votos, Auth::id());
+            }
         });
 
-        return redirect()->route('votos.index')->with('success', 'Votos actualizados correctamente.');
+        return redirect()->route('votos.index')->with('success', 'Conteo de votos actualizado correctamente.');
+    }
+
+    /**
+     * Devuelve el conteo registrado de un personero (JSON) para precargar el formulario.
+     */
+    public function conteo(Personero $personero)
+    {
+        return response()->json([
+            'personero_id' => $personero->personero_id,
+            'conteos' => $this->conteosDe($personero->personero_id),
+        ]);
     }
 
     /**
@@ -108,6 +135,7 @@ class VotoController extends Controller
     public function destroy(Voto $voto)
     {
         DB::transaction(function () use ($voto) {
+            $voto->editor_id = Auth::id();
             $voto->delete();
         });
 
@@ -121,7 +149,7 @@ class VotoController extends Controller
     */
 
     /**
-     * Partidos ordenados por nombre, para el select del formulario.
+     * Partidos ordenados por nombre, para la tabla del formulario.
      */
     private function partidosOrdenados()
     {
@@ -129,35 +157,104 @@ class VotoController extends Controller
     }
 
     /**
-     * Personas ordenadas por apellidos y nombres, para el select del formulario.
+     * Personeros ordenados por apellidos y nombres, para el select del formulario.
      */
-    private function personasOrdenadas()
+    private function personerosOrdenados()
     {
-        return Persona::orderBy('primer_apellido')
-            ->orderBy('segundo_apellido')
-            ->orderBy('nombres')
-            ->get();
+        return Personero::with('persona')
+            ->get()
+            ->sortBy(fn (Personero $personero) => $personero->persona?->apellidoNombre())
+            ->values();
     }
 
     /**
-     * Reglas de validación del registro (partido, persona y votos) y de la
-     * edición (solo los votos, porque el partido y la persona no se modifican).
+     * Personero vinculado a la persona del usuario autenticado (o null).
      */
-    private function validar(Request $request, bool $conPartidoYPersona = true)
+    private function personeroAutenticado(): ?Personero
     {
-        $reglas = ['votos' => 'required|integer|min:0'];
+        $personaId = Auth::user()?->persona_id;
 
-        if ($conPartidoYPersona) {
-            $reglas = [
-                'partido_id' => 'required|integer|exists:partidos,partido_id',
-                'persona_id' => 'required|integer|exists:personas,persona_id',
-            ] + $reglas;
+        if (! $personaId) {
+            return null;
         }
 
-        return $request->validate($reglas, [], [
-            'partido_id' => 'partido',
-            'persona_id' => 'persona',
+        return Personero::with('mesa')->where('persona_id', $personaId)->first();
+    }
+
+    /**
+     * Conteos registrados de un personero, indexados por partido.
+     */
+    private function conteosDe(?int $personeroId): array
+    {
+        if (! $personeroId) {
+            return [];
+        }
+
+        return Voto::where('personero_id', $personeroId)
+            ->pluck('votos', 'partido_id')
+            ->toArray();
+    }
+
+    /**
+     * Normaliza los votos recibidos (votos[partido_id]) a un arreglo partido => votos.
+     */
+    private function normalizarConteos(Request $request): array
+    {
+        $conteos = [];
+
+        foreach ((array) $request->input('votos', []) as $partidoId => $votos) {
+            if (! is_numeric($partidoId) || ! is_numeric($votos)) {
+                continue;
+            }
+
+            $conteos[(int) $partidoId] = max(0, (int) $votos);
+        }
+
+        return $conteos;
+    }
+
+    /**
+     * Reglas de validación del personero y de los votos por partido.
+     */
+    private function validar(Request $request)
+    {
+        return $request->validate([
+            'personero_id' => 'required|integer|exists:personeros,personero_id',
+            'votos' => 'required|array',
+            'votos.*' => 'nullable|integer|min:0',
+        ], [], [
+            'personero_id' => 'personero',
             'votos' => 'votos',
         ]);
+    }
+
+    /**
+     * Crea o actualiza el conteo de un partido para el personero.
+     */
+    private function guardarConteo(int $personeroId, int $partidoId, int $votos, ?int $usuarioId): void
+    {
+        $registro = Voto::withTrashed()
+            ->where('personero_id', $personeroId)
+            ->where('partido_id', $partidoId)
+            ->first();
+
+        if ($registro) {
+            if ($registro->trashed()) {
+                $registro->restore();
+            }
+            $registro->votos = $votos;
+            $registro->editor_id = $usuarioId;
+            $registro->save();
+
+            return;
+        }
+
+        $registro = new Voto();
+        $registro->personero_id = $personeroId;
+        $registro->partido_id = $partidoId;
+        $registro->votos = $votos;
+        $registro->autor_id = $usuarioId;
+        $registro->editor_id = $usuarioId;
+        $registro->save();
     }
 }

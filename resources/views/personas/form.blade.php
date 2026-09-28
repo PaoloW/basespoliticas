@@ -22,7 +22,7 @@
                     <div class="col-12 col-md-4 mb-3">
                         <label for="dni" class="form-label"><strong>DNI</strong></label>
                         <input type="text" class="form-control" id="dni" name="dni"
-                               value="{{ old('dni', $persona->dni) }}" maxlength="255" spellcheck="false"
+                               value="{{ old('dni', $persona->dni) }}" maxlength="8" spellcheck="false"
                                autocorrect="off" autocapitalize="off" required>
                     </div>
                     <div class="col-12 col-md-8 mb-3">

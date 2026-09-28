@@ -1,0 +1,310 @@
+/*
+ * Ajustes del modo oscuro para el template SB Admin v7 (Bootstrap 5).
+ * El CSS compilado no incluye los overrides de [data-bs-theme="dark"],
+ * por lo que se definen aquí y se cargan después de styles.css.
+ */
+
+:root,
+[data-bs-theme="light"] {
+    color-scheme: light;
+}
+
+[data-bs-theme="dark"] {
+    color-scheme: dark;
+
+    /* Base */
+    --bs-body-bg: #212529;
+    --bs-body-color: #dee2e6;
+    --bs-border-color: #495057;
+    --bs-emphasis-color: #ffffff;
+    --bs-heading-color: #ffffff;
+    --bs-secondary-color: #adb5bd;
+    --bs-link-color: #6ea8fe;
+    --bs-link-hover-color: #9ec5fe;
+    --bs-code-color: #e685b5;
+    --bs-focus-ring-color: rgba(110, 168, 254, 0.5);
+
+    /* Superficies */
+    --bs-card-bg: #2b3035;
+    --bs-card-border-color: #495057;
+    --bs-modal-bg: #2b3035;
+    --bs-modal-border-color: #495057;
+    --bs-dropdown-bg: #2b3035;
+    --bs-dropdown-link-color: #dee2e6;
+    --bs-dropdown-link-hover-color: #ffffff;
+    --bs-dropdown-link-hover-bg: #343a40;
+    --bs-dropdown-link-active-bg: #0d6efd;
+    --bs-list-group-bg: #2b3035;
+    --bs-list-group-color: #dee2e6;
+    --bs-list-group-border-color: #495057;
+    --bs-list-group-hover-bg: #343a40;
+    --bs-list-group-action-active-bg: #343a40;
+
+    /* Controles */
+    --bs-form-control-bg: #212529;
+    --bs-form-control-border-color: #495057;
+    --bs-form-select-bg: #212529;
+    --bs-form-select-border-color: #495057;
+    --bs-form-check-bg: #212529;
+
+    /* Tablas */
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--bs-body-color);
+    --bs-table-border-color: #495057;
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.05);
+    --bs-table-striped-color: #fff;
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.075);
+    --bs-table-hover-color: #fff;
+
+    /* Paginación */
+    --bs-pagination-bg: #2b3035;
+    --bs-pagination-border-color: #495057;
+    --bs-pagination-color: #dee2e6;
+    --bs-pagination-hover-bg: #343a40;
+    --bs-pagination-hover-border-color: #6c757d;
+    --bs-pagination-hover-color: #fff;
+    --bs-pagination-active-bg: #0d6efd;
+    --bs-pagination-active-border-color: #0d6efd;
+    --bs-pagination-disabled-bg: #2b3035;
+    --bs-pagination-disabled-border-color: #495057;
+    --bs-pagination-disabled-color: #adb5bd;
+
+    /* Fondos secundarios */
+    --bs-secondary-bg: #343a40;
+    --bs-tertiary-bg: #2b3035;
+}
+
+/* ---------------------------------------------------------------------------
+   Cuerpo de la página
+   --------------------------------------------------------------------------- */
+[data-bs-theme="dark"] body {
+    background-color: #212529;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .text-muted {
+    color: #adb5bd !important;
+}
+
+[data-bs-theme="dark"] .bg-dark {
+    background-color: #343a40 !important;
+}
+
+/* Barra lateral (SB Admin) */
+[data-bs-theme="dark"] .sb-sidenav-dark {
+    background-color: #1b1f23;
+    border-right: 1px solid #495057;
+}
+
+[data-bs-theme="dark"] .sb-sidenav-footer {
+    border-top: 1px solid #495057;
+}
+
+/* ---------------------------------------------------------------------------
+   Tarjetas, modales, menús desplegables y listas
+   --------------------------------------------------------------------------- */
+[data-bs-theme="dark"] .card {
+    background-color: #2b3035;
+    border-color: #495057;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .card-header,
+[data-bs-theme="dark"] .card-footer {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .modal-content {
+    background-color: #2b3035;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .modal-header,
+[data-bs-theme="dark"] .modal-footer {
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .dropdown-menu {
+    background-color: #2b3035;
+}
+
+[data-bs-theme="dark"] .dropdown-divider {
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .list-group-item {
+    background-color: #2b3035;
+    border-color: #495057;
+    color: #dee2e6;
+}
+
+/* ---------------------------------------------------------------------------
+   Formularios
+   --------------------------------------------------------------------------- */
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+    background-color: #212529;
+    border-color: #495057;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus {
+    background-color: #212529;
+    color: #dee2e6;
+    border-color: #86b7fe;
+}
+
+[data-bs-theme="dark"] .form-control::placeholder {
+    color: #6c757d;
+}
+
+[data-bs-theme="dark"] .form-control[readonly] {
+    background-color: #2b3035;
+}
+
+[data-bs-theme="dark"] .input-group-text {
+    background-color: #343a40;
+    border-color: #495057;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .form-check-input {
+    background-color: #212529;
+    border-color: #6c757d;
+}
+
+[data-bs-theme="dark"] .form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+[data-bs-theme="dark"] .form-label {
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .form-text {
+    color: #adb5bd;
+}
+
+/* Select2 (tema bootstrap-5) */
+[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection {
+    background-color: #212529;
+    border-color: #495057;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection__rendered {
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-dropdown {
+    background-color: #2b3035;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-search__field {
+    background-color: #212529;
+    border-color: #495057;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-results__option {
+    background-color: #2b3035;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-results__option--highlighted {
+    background-color: #0d6efd;
+    color: #fff;
+}
+
+/* ---------------------------------------------------------------------------
+   Tablas, paginación y DataTables
+   --------------------------------------------------------------------------- */
+[data-bs-theme="dark"] .table {
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .table > :not(caption) > * > * {
+    background-color: transparent;
+    color: #dee2e6;
+    box-shadow: none;
+}
+
+[data-bs-theme="dark"] .page-link {
+    background-color: #2b3035;
+    border-color: #495057;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+}
+
+[data-bs-theme="dark"] .page-item.disabled .page-link {
+    background-color: #2b3035;
+    border-color: #495057;
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_filter input,
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_length select {
+    background-color: #212529;
+    border-color: #495057;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_info,
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_length,
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_filter,
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_paginate {
+    color: #adb5bd;
+}
+
+/* ---------------------------------------------------------------------------
+   Alertas y mensajes
+   --------------------------------------------------------------------------- */
+[data-bs-theme="dark"] .alert-success {
+    color: #a3cfbb;
+    background-color: #0a3622;
+    border-color: #14532d;
+}
+
+[data-bs-theme="dark"] .alert-danger {
+    color: #f1aeb5;
+    background-color: #58151c;
+    border-color: #842029;
+}
+
+[data-bs-theme="dark"] .alert-warning {
+    color: #ffe69c;
+    background-color: #332701;
+    border-color: #997404;
+}
+
+[data-bs-theme="dark"] .alert-info {
+    color: #9eeaf9;
+    background-color: #032830;
+    border-color: #087990;
+}
+
+/* ---------------------------------------------------------------------------
+   Detalles varios
+   --------------------------------------------------------------------------- */
+[data-bs-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-bs-theme="dark"] .breadcrumb-item + .breadcrumb-item::before {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .btn-outline-secondary {
+    --bs-btn-color: #adb5bd;
+    --bs-btn-border-color: #6c757d;
+}
+

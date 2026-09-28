@@ -32,7 +32,7 @@ class UsuarioController extends Controller
      */
     public function create()
     {
-        $menu_ids = [];
+        $menu_ids = $this->menusPorDefecto();
         $menus = $this->menusJerarquicos();
         $usuario = new Usuario();
 
@@ -161,11 +161,38 @@ class UsuarioController extends Controller
         return redirect()->route('usuarios.index')->with('success', 'Usuario eliminado correctamente.');
     }
 
+    /**
+     * Guarda el tema de la interfaz (claro/oscuro) del usuario autenticado.
+     */
+    public function guardarTema(Request $request)
+    {
+        $data = $request->validate([
+            'tema' => 'required|in:light,dark',
+        ], [], [
+            'tema' => 'tema',
+        ]);
+
+        Auth::user()->update(['tema' => $data['tema']]);
+
+        return response()->json(['tema' => $data['tema']]);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Lógica interna
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Menús que se marcan por defecto al crear un usuario.
+     */
+    private function menusPorDefecto(): array
+    {
+        return Menu::where('descripcion', Menu::REGISTRAR_CONTEOS)
+            ->pluck('menu_id')
+            ->map(fn ($menuId) => (int) $menuId)
+            ->all();
+    }
 
     /**
      * Menús principales ordenados con sus submenús.

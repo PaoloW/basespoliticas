@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-bs-theme="{{ auth()->user()->tema ?? 'light' }}">
 
 <head>
     <meta charset="utf-8">
@@ -19,6 +19,8 @@
     <!-- Styles -->
     {{-- Template SB Admin v7 (incluye Bootstrap 5 compilado) --}}
     <link rel="stylesheet" type="text/css" href="{{ asset('css/styles.css') }}">
+    {{-- Ajustes del modo oscuro (Bootstrap data-bs-theme) --}}
+    <link rel="stylesheet" type="text/css" href="{{ asset('css/tema-oscuro.css') }}">
     <!-- Font Awesome -->
     <link rel="stylesheet" type="text/css" href="{{ asset('css/all.min.css') }}">
     <!-- DataTables (jQuery) integración Bootstrap 5 -->

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Personero extends Model
@@ -71,6 +72,14 @@ class Personero extends Model
     public function mesa(): BelongsTo
     {
         return $this->belongsTo(Mesa::class, 'mesa_id', 'mesa_id');
+    }
+
+    /**
+     * Los conteos de votos registrados por el personero (uno por partido).
+     */
+    public function votos(): HasMany
+    {
+        return $this->hasMany(Voto::class, 'personero_id', 'personero_id');
     }
 
     /*

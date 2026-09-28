@@ -43,14 +43,30 @@
                 @endif
 
                     <div class="sb-sidenav-menu-heading">Procesos</div>
+                    @if ( auth()->user()->tieneAccesoDescripcion(\App\Models\Menu::PERSONEROS) )
+                    <a class="nav-link {{ request()->routeIs('personeros.*') ? 'active' : '' }}" href="{{ route('personeros.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-user-check"></i></div>
+                        Personeros
+                    </a>
+                    @endif
+                    @if ( auth()->user()->tieneAccesoDescripcion(\App\Models\Menu::AFILIADOS_BASES) )
                     <a class="nav-link {{ request()->routeIs('afiliados.*') ? 'active' : '' }}" href="{{ route('afiliados.index') }}">
                         <div class="sb-nav-link-icon"><i class="fas fa-id-card"></i></div>
                         Afiliados
                     </a>
-                    <a class="nav-link {{ request()->routeIs('votos.*') ? 'active' : '' }}" href="{{ route('votos.index') }}">
-                        <div class="sb-nav-link-icon"><i class="fas fa-vote-yea"></i></div>
-                        Gestión de votos
+                    @endif
+                    @if ( auth()->user()->tieneAccesoDescripcion(\App\Models\Menu::VER_CONTEOS) )
+                    <a class="nav-link {{ request()->routeIs('votos.index') ? 'active' : '' }}" href="{{ route('votos.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-chart-line"></i></div>
+                        Ver conteo de votos
                     </a>
+                    @endif
+                    @if ( auth()->user()->tieneAccesoDescripcion(\App\Models\Menu::REGISTRAR_CONTEOS) )
+                    <a class="nav-link {{ request()->routeIs('votos.registrar') ? 'active' : '' }}" href="{{ route('votos.registrar') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-vote-yea"></i></div>
+                        Registrar conteo de votos
+                    </a>
+                    @endif
                 @endauth
 
                 <div class="sb-sidenav-menu-heading">Cuenta</div>

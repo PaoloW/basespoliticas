@@ -27,6 +27,14 @@ class Menu extends Model
     protected $primaryKey = 'menu_id';
 
     /**
+     * Descripciones de menús referenciadas desde el código.
+     */
+    public const AFILIADOS_BASES = 'Afiliados a bases';
+    public const PERSONEROS = 'Personeros';
+    public const VER_CONTEOS = 'Ver conteo de votos';
+    public const REGISTRAR_CONTEOS = 'Registrar conteo de votos';
+
+    /**
      * Atributos asignables en masa.
      *
      * @var list<string>
