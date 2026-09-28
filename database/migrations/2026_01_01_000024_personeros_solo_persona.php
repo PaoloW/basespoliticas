@@ -33,10 +33,12 @@ return new class extends Migration
         } catch (\Throwable $e) {
         }
 
-        // 3. Elimina la columna: la relación del personero es solo con la persona.
-        Schema::table('personeros', function (Blueprint $table) {
-            $table->dropColumn('afiliado_id');
-        });
+        // 3. Elimina la columna si existe: la relación del personero es solo con la persona.
+        if (Schema::hasColumn('personeros', 'afiliado_id')) {
+            Schema::table('personeros', function (Blueprint $table) {
+                $table->dropColumn('afiliado_id');
+            });
+        }
 
         // 4. Un personero vigente por persona.
         Schema::table('personeros', function (Blueprint $table) {
