@@ -41,6 +41,12 @@
                         Partidos
                     </a>
                 @endif
+
+                    <div class="sb-sidenav-menu-heading">Procesos</div>
+                    <a class="nav-link {{ request()->routeIs('votos.*') ? 'active' : '' }}" href="{{ route('votos.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-vote-yea"></i></div>
+                        Gestión de votos
+                    </a>
                 @endauth
 
                 <div class="sb-sidenav-menu-heading">Cuenta</div>

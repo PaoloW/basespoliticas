@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Partido extends Model
@@ -35,6 +36,20 @@ class Partido extends Model
         'autor_id',
         'editor_id',
     ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relaciones
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Registros de votos de este partido.
+     */
+    public function votos(): HasMany
+    {
+        return $this->hasMany(Voto::class, 'partido_id', 'partido_id');
+    }
 
     /*
     |--------------------------------------------------------------------------

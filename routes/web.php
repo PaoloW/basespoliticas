@@ -9,6 +9,7 @@ use App\Http\Controllers\MesaController;
 use App\Http\Controllers\PartidoController;
 use App\Http\Controllers\PersonaController;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\VotoController;
 
 // ---------------------------------------------------------------------------
 // Autenticación
@@ -40,3 +41,4 @@ Route::resource('mesas', MesaController::class)->except(['show'])->middleware('a
 Route::resource('cargos', CargoController::class)->except(['show'])->middleware('auth');
 Route::resource('bases', BaseController::class)->except(['show'])->parameters(['bases' => 'base'])->middleware('auth');
 Route::resource('partidos', PartidoController::class)->except(['show'])->middleware('auth');
+Route::resource('votos', VotoController::class)->except(['show'])->middleware('auth');
