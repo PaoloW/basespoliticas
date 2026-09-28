@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AfiliadoController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BaseController;
 use App\Http\Controllers\CargoController;
@@ -42,3 +43,18 @@ Route::resource('cargos', CargoController::class)->except(['show'])->middleware(
 Route::resource('bases', BaseController::class)->except(['show'])->parameters(['bases' => 'base'])->middleware('auth');
 Route::resource('partidos', PartidoController::class)->except(['show'])->middleware('auth');
 Route::resource('votos', VotoController::class)->except(['show'])->middleware('auth');
+
+// Afiliados: búsquedas AJAX y listados paginados (modales) antes del resource.
+Route::get('afiliados/buscar-persona', [AfiliadoController::class, 'buscarPersona'])
+    ->name('afiliados.buscarPersona')
+    ->middleware('auth');
+Route::get('afiliados/buscar-base', [AfiliadoController::class, 'buscarBase'])
+    ->name('afiliados.buscarBase')
+    ->middleware('auth');
+Route::get('afiliados/personas', [AfiliadoController::class, 'personas'])
+    ->name('afiliados.personas')
+    ->middleware('auth');
+Route::get('afiliados/bases', [AfiliadoController::class, 'bases'])
+    ->name('afiliados.bases')
+    ->middleware('auth');
+Route::resource('afiliados', AfiliadoController::class)->except(['show'])->middleware('auth');
