@@ -33,6 +33,7 @@ class Partido extends Model
     protected $fillable = [
         'partido_id',
         'nombre',
+        'logo',
         'autor_id',
         'editor_id',
     ];

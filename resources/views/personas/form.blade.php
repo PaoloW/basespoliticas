@@ -88,8 +88,8 @@
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save me-2"></i>Guardar
                     </button>
-                    <a class="btn btn-secondary" href="{{ route('personas.index') }}">
-                        <i class="fas fa-arrow-left me-2"></i>Ver todas
+                    <a class="btn btn-secondary" href="{{ $rutaOrigen ?? route('personas.index') }}">
+                        <i class="fas fa-arrow-left me-2"></i>{{ ( $origen ?? 'personas' ) === 'personas' ? 'Ver todas' : 'Cancelar' }}
                     </a>
                 </div>
             </div>
@@ -98,6 +98,9 @@
 </div>
 
 @csrf
+
+{{-- Módulo desde el que se abrió el formulario: permite regresar al origen. --}}
+<input type="hidden" name="origen" value="{{ old('origen', $origen ?? 'personas') }}">
 
 @section('footer')
     <script>

@@ -25,6 +25,8 @@ class PersonaController extends Controller
     /**
      * Formulario para registrar una nueva persona.
      * Se pre-carga el DNI cuando se llega desde una búsqueda fallida (?dni=).
+     * El parámetro `origen` indica desde qué módulo se llegó (?origen=) para
+     * regresar a esa ruta al terminar el registro.
      */
     public function create(Request $request)
     {
@@ -32,16 +34,19 @@ class PersonaController extends Controller
         // La clave primaria de persona no es autoincremental; se asigna el siguiente id libre.
         $persona->persona_id = (Persona::withTrashed()->max('persona_id') ?? 0) + 1;
         $persona->dni = $request->query('dni');
+        $origen = $this->origenValido($request->query('origen'));
+        [$rutaOrigen, $etiquetaOrigen] = $this->destinoOrigen($origen);
 
-        return view('personas.create', compact('persona'));
+        return view('personas.create', compact('persona', 'origen', 'rutaOrigen', 'etiquetaOrigen'));
     }
 
     /**
-     * Almacena una nueva persona.
+     * Almacena una nueva persona y regresa al módulo de origen.
      */
     public function store(Request $request)
     {
         $data = $this->validar($request);
+        $origen = $this->origenValido($request->input('origen'));
 
         DB::transaction(function () use ($data) {
             $persona = new Persona();
@@ -58,7 +63,7 @@ class PersonaController extends Controller
             $persona->save();
         });
 
-        return redirect()->route('personas.index')->with('success', 'Persona registrada correctamente.');
+        return redirect()->route($this->rutaOrigen($origen))->with('success', 'Persona registrada correctamente.');
     }
 
     /**
@@ -66,7 +71,10 @@ class PersonaController extends Controller
      */
     public function edit(Persona $persona)
     {
-        return view('personas.edit', compact('persona'));
+        $origen = 'personas';
+        [$rutaOrigen, $etiquetaOrigen] = $this->destinoOrigen($origen);
+
+        return view('personas.edit', compact('persona', 'origen', 'rutaOrigen', 'etiquetaOrigen'));
     }
 
     /**
@@ -108,6 +116,48 @@ class PersonaController extends Controller
     | Lógica interna
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Módulos desde los que se puede registrar una persona.
+     */
+    private const ORIGENES = ['personas', 'afiliados', 'usuarios', 'personeros'];
+
+    /**
+     * Valida el módulo de origen recibido; por defecto es el listado de personas.
+     */
+    private function origenValido(?string $origen): string
+    {
+        return in_array($origen, self::ORIGENES, true) ? $origen : 'personas';
+    }
+
+    /**
+     * Ruta a la que se regresa después de registrar la persona.
+     */
+    private function rutaOrigen(string $origen): string
+    {
+        return match ($origen) {
+            'afiliados' => 'afiliados.create',
+            'usuarios' => 'usuarios.create',
+            'personeros' => 'personeros.create',
+            default => 'personas.index',
+        };
+    }
+
+    /**
+     * URL y etiqueta del módulo de origen (breadcrumb y botón de cancelar).
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function destinoOrigen(string $origen): array
+    {
+        $etiquetas = [
+            'afiliados' => 'Afiliados',
+            'usuarios' => 'Usuarios',
+            'personeros' => 'Personeros',
+        ];
+
+        return [route($this->rutaOrigen($origen)), $etiquetas[$origen] ?? 'Personas'];
+    }
 
     /**
      * Reglas de validación al crear o actualizar una persona.

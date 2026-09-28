@@ -9,6 +9,7 @@ use App\Models\Persona;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -45,8 +46,9 @@ class AfiliadoController extends Controller
      */
     public function store(Request $request)
     {
+        // Se verifica primero para mostrar el mensaje con la base actual.
+        $this->verificarAfiliacionActiva((int) $request->input('persona_id', 0));
         $data = $this->validar($request);
-        $this->verificarAfiliacionActiva((int) $data['persona_id']);
 
         DB::transaction(function () use ($data) {
             $afiliado = new Afiliado();
@@ -187,10 +189,20 @@ class AfiliadoController extends Controller
         }
 
         return $request->validate([
-            'persona_id' => 'required|integer|exists:personas,persona_id',
+            // Regla declarativa: una persona solo puede tener una afiliación vigente.
+            'persona_id' => [
+                'required',
+                'integer',
+                'exists:personas,persona_id',
+                Rule::unique('afiliados', 'persona_id')
+                    ->whereNull('deleted_at')
+                    ->ignore($afiliado?->afiliado_id, 'afiliado_id'),
+            ],
             'base_id' => 'required|integer|exists:bases,base_id',
             'cargo_id' => 'required|integer|exists:cargos,cargo_id',
-        ], [], [
+        ], [
+            'persona_id.unique' => 'Esa persona ya está afiliada a una base. Cada persona solo puede tener una afiliación vigente; anule la afiliación actual antes de registrar otra.',
+        ], [
             'persona_id' => 'persona',
             'base_id' => 'base',
             'cargo_id' => 'cargo',

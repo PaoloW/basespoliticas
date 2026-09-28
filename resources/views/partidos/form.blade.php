@@ -25,6 +25,16 @@
                                value="{{ old('nombre', $partido->nombre) }}" maxlength="255" required>
                         <div class="form-text">Nombre del partido político, por ejemplo: Partido Azul.</div>
                     </div>
+                    <div class="col-12 mb-3">
+                        <label for="logo" class="form-label"><strong>Logo del partido</strong></label>
+                        <div class="d-flex align-items-center gap-3">
+                            @if (!empty($partido->logo))
+                                <img src="{{ asset($partido->logo) }}" alt="Logo actual" class="img-thumbnail" style="height: 38px; width: auto;">
+                            @endif
+                            <input type="file" class="form-control" id="logo" name="logo" accept="image/*">
+                        </div>
+                        <div class="form-text">Imagen opcional (máx. 2 MB). Se muestra en el registro de votos.</div>
+                    </div>
                 </div>
             </div>
         </div>

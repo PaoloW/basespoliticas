@@ -86,13 +86,21 @@
                         <table class="table table-sm table-striped align-middle">
                             <thead>
                                 <tr>
+                                    <th style="width: 60px;" class="text-center">Logo</th>
                                     <th style="width: 65%">Partido</th>
-                                    <th class="text-center">Nro de votos</th>
+                                    <th class="text-center">Votos</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach ( $partidos as $partido )
                                 <tr>
+                                    <td class="text-center">
+                                        @if (!empty($partido->logo))
+                                            <img src="{{ asset($partido->logo) }}" alt="Logo" style="height: 38px; width: auto; max-width: 60px; object-fit: contain;">
+                                        @else
+                                            <span class="placeholder-logo" title="Sin logo"><i class="fas fa-flag"></i></span>
+                                        @endif
+                                    </td>
                                     <td>
                                         {{-- Partido bloqueado: solo lectura --}}
                                         <input type="text" class="form-control" value="{{ $partido->nombre }}" readonly tabindex="-1">
@@ -106,6 +114,7 @@
                                 @endforeach
                             </tbody>
                         </table>
+<style>.placeholder-logo{display:inline-flex;align-items:center;justify-content:center;height:38px;width:38px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:.375rem;color:#adb5bd}</style>
                     </div>
                 @endif
             </div>

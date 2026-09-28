@@ -99,6 +99,7 @@ class PersoneroController extends Controller
     {
         $data = $this->validar($request);
         $this->verificarPersoneroActivo((int) $data['persona_id']);
+        $this->verificarMesaDisponible((int) $data['mesa_id']);
 
         DB::transaction(function () use ($data) {
             $personero = new Personero();
@@ -133,6 +134,7 @@ class PersoneroController extends Controller
     public function update(Request $request, Personero $personero)
     {
         $data = $this->validar($request, $personero);
+        $this->verificarMesaDisponible((int) $data['mesa_id'], $personero->personero_id);
 
         DB::transaction(function () use ($personero, $data) {
             $personero->mesa_id = $data['mesa_id'];
@@ -164,10 +166,14 @@ class PersoneroController extends Controller
 
     /**
      * Mesas ordenadas por descripción con su centro, para el select del formulario.
+     * Se incluye `personeros_count` para deshabilitar las mesas que ya tienen apoderado.
      */
     private function mesasOrdenadas()
     {
-        return Mesa::with('centro')->orderBy('descripcion')->get();
+        return Mesa::with('centro')
+            ->withCount('personeros')
+            ->orderBy('descripcion')
+            ->get();
     }
 
     /**
@@ -205,6 +211,29 @@ class PersoneroController extends Controller
 
         throw ValidationException::withMessages([
             'persona_id' => $persona.' ya está registrada como personero de la '.$mesa.'.',
+        ])->redirectTo(route('personeros.create'));
+    }
+
+    /**
+     * Verifica que la mesa no tenga ya un personero (apoderado) asignado:
+     * cada mesa solo puede tener uno.
+     */
+    private function verificarMesaDisponible(int $mesaId, ?int $personeroId = null): void
+    {
+        $personero = Personero::with(['persona', 'mesa'])
+            ->where('mesa_id', $mesaId)
+            ->when($personeroId, fn ($query) => $query->where('personero_id', '!=', $personeroId))
+            ->first();
+
+        if (! $personero) {
+            return;
+        }
+
+        $mesa = $personero->mesa?->etiqueta() ?? 'esa mesa';
+        $persona = $personero->persona?->apellidoNombre() ?? 'Otra persona';
+
+        throw ValidationException::withMessages([
+            'mesa_id' => 'La '.$mesa.' ya tiene el personero '.$persona.'. Solo puede haber un apoderado por mesa.',
         ])->redirectTo(route('personeros.create'));
     }
 

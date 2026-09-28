@@ -45,7 +45,7 @@
                             @unless ( $esEdicion )
                                 {{-- Se muestra solo cuando el DNI consultado no existe --}}
                                 <a class="btn btn-outline-success" id="btnRegistrarPersona"
-                                   href="{{ route('personas.create') }}" style="display: none;"
+                                   href="{{ route('personas.create', ['origen' => 'afiliados']) }}" style="display: none;"
                                    data-bs-toggle="tooltip" title="Registrar persona nueva con este DNI">
                                     <i class="fas fa-plus"></i>
                                 </a>
@@ -268,14 +268,14 @@
 
             // Botón "+" para registrar la persona cuando el DNI no existe.
             const $btnRegistrarPersona = $('#btnRegistrarPersona');
-            const urlRegistroPersona = '{{ route('personas.create') }}';
+            const urlRegistroPersona = '{{ route('personas.create', ['origen' => 'afiliados']) }}';
 
             const mostrarBtnRegistrar = function (dni) {
                 if (!$btnRegistrarPersona.length) {
                     return;
                 }
                 $btnRegistrarPersona
-                    .attr('href', urlRegistroPersona + '?dni=' + encodeURIComponent(dni))
+                    .attr('href', urlRegistroPersona + '&dni=' + encodeURIComponent(dni))
                     .show();
             };
 

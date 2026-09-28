@@ -7,7 +7,7 @@
     <h1 class="mt-4 h3">Registrar Persona</h1>
     <ol class="breadcrumb mb-4">
         <li class="breadcrumb-item"><a href="{{ route('home') }}">Inicio</a></li>
-        <li class="breadcrumb-item"><a href="{{ route('personas.index') }}">Personas</a></li>
+        <li class="breadcrumb-item"><a href="{{ $rutaOrigen }}">{{ $etiquetaOrigen }}</a></li>
         <li class="breadcrumb-item active">Registrar</li>
     </ol>
 

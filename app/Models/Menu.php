@@ -29,6 +29,13 @@ class Menu extends Model
     /**
      * Descripciones de menús referenciadas desde el código.
      */
+    public const USUARIOS = 'Usuarios';
+    public const PERSONAS = 'Personas';
+    public const CENTROS = 'Centros de votación';
+    public const MESAS = 'Mesas de votación';
+    public const CARGOS = 'Cargos';
+    public const BASES = 'Bases';
+    public const PARTIDOS = 'Partidos';
     public const AFILIADOS_BASES = 'Afiliados a bases';
     public const PERSONEROS = 'Personeros';
     public const VER_CONTEOS = 'Ver conteo de votos';

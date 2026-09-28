@@ -35,7 +35,7 @@
                             @unless ( $esEdicion )
                                 {{-- Se muestra solo cuando el DNI consultado no existe --}}
                                 <a class="btn btn-outline-success" id="btnRegistrarPersona"
-                                   href="{{ route('personas.create') }}" style="display: none;"
+                                   href="{{ route('personas.create', ['origen' => 'personeros']) }}" style="display: none;"
                                    data-bs-toggle="tooltip" title="Registrar persona nueva con este DNI">
                                     <i class="fas fa-plus"></i>
                                 </a>
@@ -61,16 +61,23 @@
                         <select class="form-select" name="mesa_id" id="mesa_id" required>
                             <option value="">Seleccione una mesa</option>
                             @forelse ( $mesas as $mesa )
+                                @php
+                                    // Solo un apoderado por mesa: las ocupadas quedan deshabilitadas.
+                                    $ocupada = (int) ( $mesa->personeros_count ?? 0 ) > 0;
+                                    $esActual = old( 'mesa_id', $personero->mesa_id ) == $mesa->mesa_id;
+                                @endphp
                                 <option value="{{ $mesa->mesa_id }}"
-                                        @if ( old('mesa_id', $personero->mesa_id) == $mesa->mesa_id ) selected @endif>
-                                    {{ $mesa->etiqueta() }}{{ $mesa->centro ? ' — '.$mesa->centro->descripcion : '' }}
+                                        @if ( $esActual ) selected @endif
+                                        @if ( $ocupada && ! $esActual ) disabled @endif>
+                                    {{ $mesa->etiqueta() }}{{ $mesa->centro ? ' — '.$mesa->centro->descripcion : '' }}{{ $ocupada && ! $esActual ? ' (ya tiene personero)' : '' }}
                                 </option>
                             @empty
                                 <option value="" disabled>No hay mesas registradas</option>
                             @endforelse
                         </select>
                         <div class="form-text">
-                            Mesas del módulo <a href="{{ route('mesas.index') }}">Mesas de votación</a>.
+                            Cada mesa solo puede tener un personero. Mesas del módulo
+                            <a href="{{ route('mesas.index') }}">Mesas de votación</a>.
                         </div>
                     </div>
                 </div>
@@ -165,14 +172,14 @@
 
             // Botón "+" para registrar la persona cuando el DNI no existe.
             const $btnRegistrarPersona = $('#btnRegistrarPersona');
-            const urlRegistroPersona = '{{ route('personas.create') }}';
+            const urlRegistroPersona = '{{ route('personas.create', ['origen' => 'personeros']) }}';
 
             const mostrarBtnRegistrar = function (dni) {
                 if (!$btnRegistrarPersona.length) {
                     return;
                 }
                 $btnRegistrarPersona
-                    .attr('href', urlRegistroPersona + '?dni=' + encodeURIComponent(dni))
+                    .attr('href', urlRegistroPersona + '&dni=' + encodeURIComponent(dni))
                     .show();
             };
 

@@ -36,14 +36,18 @@ class PartidoController extends Controller
     public function store(Request $request)
     {
         $data = $this->validar($request);
+        $partido = null;
 
-        DB::transaction(function () use ($data) {
+        DB::transaction(function () use ($data, &$partido) {
             $partido = new Partido();
             $partido->nombre = $data['nombre'];
             $partido->autor_id = Auth::id();
             $partido->editor_id = Auth::id();
             $partido->save();
         });
+
+        // El logo se almacena una vez confirmada la transacción.
+        $this->guardarLogo($request, $partido);
 
         return redirect()->route('partidos.index')->with('success', 'Partido registrado correctamente.');
     }
@@ -68,6 +72,9 @@ class PartidoController extends Controller
             $partido->editor_id = Auth::id();
             $partido->save();
         });
+
+        // Reemplaza el logo solo si se envió uno nuevo.
+        $this->guardarLogo($request, $partido);
 
         return redirect()->route('partidos.index')->with('success', 'Partido actualizado correctamente.');
     }
@@ -97,8 +104,42 @@ class PartidoController extends Controller
     {
         return $request->validate([
             'nombre' => 'required|string|max:255',
-        ], [], [
+            'logo' => 'nullable|image|max:2048',
+        ], [
+            'logo.image' => 'El logo debe ser una imagen.',
+            'logo.max' => 'El logo no puede superar los 2 MB.',
+        ], [
             'nombre' => 'nombre del partido',
+            'logo' => 'logo',
         ]);
+    }
+
+    /**
+     * Guarda el logo enviado en public/img/partidos y actualiza la ruta
+     * almacenada en el partido. Si no se envía archivo, conserva el actual.
+     */
+    private function guardarLogo(Request $request, Partido $partido): void
+    {
+        if (! $request->hasFile('logo')) {
+            return;
+        }
+
+        $archivo = $request->file('logo');
+        $directorio = public_path('img/partidos');
+
+        if (! is_dir($directorio)) {
+            mkdir($directorio, 0755, true);
+        }
+
+        // Elimina el logo anterior para no dejar archivos huérfanos.
+        if ($partido->logo && is_file(public_path($partido->logo))) {
+            unlink(public_path($partido->logo));
+        }
+
+        $nombre = 'partido_'.$partido->partido_id.'_'.time().'.'.$archivo->extension();
+        $archivo->move($directorio, $nombre);
+
+        $partido->logo = 'img/partidos/'.$nombre;
+        $partido->save();
     }
 }
