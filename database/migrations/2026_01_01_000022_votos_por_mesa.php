@@ -21,8 +21,8 @@ return new class extends Migration
             $table->unsignedBigInteger('mesa_id')->nullable()->after('voto_id');
         });
 
-        // 2. Backfill: mesa del personero dueño del conteo.
-        DB::statement('UPDATE votos v JOIN personeros p ON p.personero_id = v.personero_id SET v.mesa_id = p.mesa_id WHERE v.mesa_id IS NULL');
+        // 2. Backfill: mesa del personero dueño del conteo (subconsulta portable MySQL/SQLite).
+        DB::statement('UPDATE votos SET mesa_id = (SELECT p.mesa_id FROM personeros p WHERE p.personero_id = votos.personero_id LIMIT 1) WHERE mesa_id IS NULL');
 
         // 3. Quita FK y unicidad anteriores (nombres tolerantes a fallos).
         foreach (['votos_personero_id_foreign', 'votos_personero_partido_unique'] as $indice) {
@@ -70,7 +70,7 @@ return new class extends Migration
             $table->unsignedBigInteger('personero_id')->nullable()->after('voto_id');
         });
 
-        DB::statement('UPDATE votos v JOIN personeros p ON p.mesa_id = v.mesa_id SET v.personero_id = p.personero_id WHERE v.personero_id IS NULL LIMIT 1');
+        DB::statement('UPDATE votos SET personero_id = (SELECT p.personero_id FROM personeros p WHERE p.mesa_id = votos.mesa_id LIMIT 1) WHERE personero_id IS NULL');
 
         Schema::table('votos', function (Blueprint $table) {
             $table->dropColumn('mesa_id');

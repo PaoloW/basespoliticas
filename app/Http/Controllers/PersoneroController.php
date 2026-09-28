@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Acceso;
-use App\Models\Afiliado;
 use App\Models\Menu;
 use App\Models\Mesa;
+use App\Models\Persona;
 use App\Models\Personero;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
@@ -32,85 +32,91 @@ class PersoneroController extends Controller
 
     /**
      * Formulario para registrar un nuevo personero.
+     * La persona es el único dato de origen: se puede llegar con ?dni= (búsqueda
+     * fallida) o con ?persona_id= (retorno del alta de una persona nueva).
      */
-    public function create()
+    public function create(Request $request)
     {
         $personero = new Personero();
         $mesas = $this->mesasOrdenadas();
-        $afiliadoSeleccionado = old('afiliado_id')
-            ? Afiliado::with('persona')->where('afiliado_id', old('afiliado_id'))->first()
-            : null;
-        $personaSeleccionada = $afiliadoSeleccionado?->persona;
+        $personaSeleccionada = $this->personaDeRetorno($request);
 
-        return view('personeros.create', compact('personero', 'mesas', 'afiliadoSeleccionado', 'personaSeleccionada'));
+        return view('personeros.create', compact('personero', 'mesas', 'personaSeleccionada'));
     }
 
     /**
-     * Busca un afiliado por su DNI para asignarlo como personero (AJAX).
+     * Busca una persona por su DNI para asignarla como personero (AJAX).
+     * Devuelve además su afiliación si la tiene (es opcional).
      */
     public function buscarPersona(Request $request)
     {
-        $dni = preg_replace('/\D/', '', (string) $request->query('dni', ''));
+        $dni = $this->normalizarDni($request->query('dni'));
 
         if ($dni === '') {
-            return response()->json(['mensaje' => 'Ingrese un DNI para buscar al afiliado.'], 422);
+            return response()->json(['mensaje' => 'Ingrese un DNI para buscar la persona.'], 422);
         }
 
-        $afiliado = Afiliado::with('persona')
-            ->whereHas('persona', fn ($q) => $q->whereRaw(
-                "REPLACE(REPLACE(REPLACE(TRIM(dni), '.', ''), '-', ''), ' ', '') = ?",
-                [$dni]
-            ))->first();
+        $persona = $this->personaPorDni($dni);
 
-        if (! $afiliado) {
-            return response()->json(['mensaje' => 'No se encontró ningún afiliado con el DNI ingresado.'], 404);
+        if (! $persona) {
+            return response()->json(['mensaje' => 'No se encontró ninguna persona con el DNI ingresado.'], 404);
         }
 
-        if ($afiliado->personeros()->exists()) {
+        if ($persona->esPersonero()) {
+            $personero = Personero::with('mesa')->where('persona_id', $persona->persona_id)->first();
+            $mesa = $personero?->mesa?->etiqueta() ?? 'otra mesa';
+
             return response()->json([
-                'mensaje' => 'El afiliado '.$afiliado->persona->apellidoNombre().' (DNI: '.$afiliado->persona->dni.') ya está registrado como personero.',
+                'mensaje' => 'La persona '.$persona->apellidoNombre().' (DNI: '.$persona->dni.') ya está registrada como personero de la '.$mesa.'.',
             ], 409);
         }
 
-        return response()->json([
-            'afiliado_id' => $afiliado->afiliado_id,
-            'persona_id' => $afiliado->persona_id,
-            'dni' => $afiliado->persona->dni,
-            'nombre_completo' => $afiliado->persona->apellidoNombre(),
-            'telefono' => $afiliado->persona->telefono,
-        ]);
+        return response()->json($this->datosPersona($persona));
     }
 
     /**
-     * Afiliados sin registro de personero para el modal (paginado en el servidor).
+     * Personas sin personero vigente para el modal (paginado en el servidor).
+     * Se muestra su afiliación cuando la tienen; es opcional.
      */
     public function personas()
     {
-        $query = Afiliado::query()
-            ->with('persona')
+        $query = Persona::query()
+            ->with(['afiliados.base', 'afiliados.cargo'])
             ->whereDoesntHave('personeros')
-            ->join('personas', 'personas.persona_id', '=', 'afiliados.persona_id')
-            ->select(['afiliados.afiliado_id', 'afiliados.persona_id', 'personas.dni', 'personas.nombres', 'personas.primer_apellido', 'personas.segundo_apellido', 'personas.telefono']);
+            ->select(['persona_id', 'dni', 'nombres', 'primer_apellido', 'segundo_apellido', 'telefono']);
 
         return DataTables::eloquent($query)
-            ->addColumn('persona', fn (Afiliado $afiliado) => $afiliado->persona?->apellidoNombre())
+            ->addColumn('persona', fn (Persona $persona) => $persona->apellidoNombre())
+            ->addColumn('afiliacion', fn (Persona $persona) => $persona->descripcionAfiliacion())
+            ->filterColumn('persona', function ($query, $keyword) {
+                $query->where(function ($q) use ($keyword) {
+                    $q->where('nombres', 'like', "%{$keyword}%")
+                        ->orWhere('primer_apellido', 'like', "%{$keyword}%")
+                        ->orWhere('segundo_apellido', 'like', "%{$keyword}%");
+                });
+            })
+            ->filterColumn('afiliacion', function ($query, $keyword) {
+                $query->where(function ($q) use ($keyword) {
+                    $q->whereHas('afiliados.base', fn ($base) => $base->where('descripcion', 'like', "%{$keyword}%"))
+                        ->orWhereHas('afiliados.cargo', fn ($cargo) => $cargo->where('descripcion', 'like', "%{$keyword}%"));
+                });
+            })
             ->toJson();
     }
 
     /**
-     * Almacena un nuevo personero y crea su cuenta de usuario.
+     * Almacena un nuevo personero y, opcionalmente, crea su cuenta de usuario.
      */
     public function store(Request $request)
     {
         $data = $this->validar($request);
-        $afiliado = Afiliado::findOrFail((int) $data['afiliado_id']);
-        $this->verificarPersoneroActivo($afiliado);
+        $persona = Persona::findOrFail((int) $data['persona_id']);
+        $this->verificarPersoneroActivo($persona);
         $this->verificarMesaDisponible((int) $data['mesa_id']);
 
-        DB::transaction(function () use ($data, $request, $afiliado) {
+        DB::transaction(function () use ($data, $request, $persona) {
             $personero = new Personero();
-            $personero->afiliado_id = $afiliado->afiliado_id;
-            $personero->persona_id = $afiliado->persona_id;
+            $personero->persona_id = $persona->persona_id;
             $personero->mesa_id = $data['mesa_id'];
             $personero->autor_id = Auth::id();
             $personero->editor_id = Auth::id();
@@ -136,10 +142,9 @@ class PersoneroController extends Controller
     public function edit(Personero $personero)
     {
         $mesas = $this->mesasOrdenadas();
-        $afiliadoSeleccionado = $personero->afiliado ?? Afiliado::with('persona')->find($personero->afiliado_id);
-        $personaSeleccionada = $afiliadoSeleccionado?->persona ?? $personero->persona;
+        $personaSeleccionada = $personero->persona;
 
-        return view('personeros.edit', compact('personero', 'mesas', 'afiliadoSeleccionado', 'personaSeleccionada'));
+        return view('personeros.edit', compact('personero', 'mesas', 'personaSeleccionada'));
     }
 
     /**
@@ -195,36 +200,90 @@ class PersoneroController extends Controller
      */
     private function validar(Request $request, ?Personero $personero = null)
     {
-        // Al editar, el afiliado permanece fijo: se toma el del registro actual.
+        // Al editar, la persona permanece fija: se toma la del registro actual.
         if ($personero) {
-            $request->merge(['afiliado_id' => $personero->afiliado_id ?? $personero->persona_id]);
+            $request->merge(['persona_id' => $personero->persona_id]);
         }
 
         return $request->validate([
-            'afiliado_id' => 'required|integer|exists:afiliados,afiliado_id',
+            'persona_id' => 'required|integer|exists:personas,persona_id',
             'mesa_id' => 'required|integer|exists:mesas,mesa_id',
         ], [], [
-            'afiliado_id' => 'afiliado',
+            'persona_id' => 'persona',
             'mesa_id' => 'mesa',
         ]);
     }
 
     /**
-     * Verifica que el afiliado no tenga ya un registro de personero activo.
+     * Persona a mostrar en el formulario: por ?persona_id= o por ?dni= (retorno
+     * del alta de una persona nueva o de una búsqueda fallida).
      */
-    private function verificarPersoneroActivo(Afiliado $afiliado): void
+    private function personaDeRetorno(Request $request): ?Persona
     {
-        $personero = Personero::with(['persona', 'mesa'])->where('afiliado_id', $afiliado->afiliado_id)->first();
+        $personaId = old('persona_id', $request->query('persona_id'));
+
+        if ($personaId) {
+            $persona = Persona::with(['afiliados.base', 'afiliados.cargo'])->find($personaId);
+
+            if ($persona) {
+                return $persona;
+            }
+        }
+
+        $dni = $this->normalizarDni(old('dni_personero', $request->query('dni')));
+
+        return $dni === '' ? null : $this->personaPorDni($dni);
+    }
+
+    /**
+     * Datos de la persona para el buscador por DNI (la afiliación es opcional).
+     */
+    private function datosPersona(Persona $persona): array
+    {
+        return [
+            'persona_id' => $persona->persona_id,
+            'dni' => $persona->dni,
+            'nombre_completo' => $persona->apellidoNombre(),
+            'telefono' => $persona->telefono,
+            'afiliacion' => $persona->descripcionAfiliacion(),
+        ];
+    }
+
+    /**
+     * DNI normalizado (solo dígitos).
+     */
+    private function normalizarDni(mixed $dni): string
+    {
+        return preg_replace('/\D/', '', (string) $dni);
+    }
+
+    /**
+     * Persona por DNI, tolerando puntos, guiones y espacios en el valor guardado.
+     */
+    private function personaPorDni(string $dni): ?Persona
+    {
+        return Persona::with(['afiliados.base', 'afiliados.cargo'])
+            ->whereRaw(
+                "REPLACE(REPLACE(REPLACE(TRIM(dni), '.', ''), '-', ''), ' ', '') = ?",
+                [$dni]
+            )->first();
+    }
+
+    /**
+     * Verifica que la persona no tenga ya un registro de personero vigente.
+     */
+    private function verificarPersoneroActivo(Persona $persona): void
+    {
+        $personero = Personero::with('mesa')->where('persona_id', $persona->persona_id)->first();
 
         if (! $personero) {
             return;
         }
 
-        $persona = $personero->persona?->apellidoNombre() ?? 'El afiliado';
         $mesa = $personero->mesa?->etiqueta() ?? 'otra mesa';
 
         throw ValidationException::withMessages([
-            'afiliado_id' => $persona.' ya está registrado como personero de la '.$mesa.'.',
+            'persona_id' => $persona->apellidoNombre().' ya está registrado como personero de la '.$mesa.'.',
         ])->redirectTo(route('personeros.create'));
     }
 

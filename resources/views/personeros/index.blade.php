@@ -69,7 +69,7 @@
                         </td>
                         <td class="text-end text-nowrap">
                             <a class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Registrar conteo de votos"
-                               href="{{ route('votos.registrar', ['personero_id' => $personero->personero_id]) }}"><i class="fas fa-vote-yea"></i></a>
+                               href="{{ route('votos.registrar', ['mesa_id' => $personero->mesa_id]) }}"><i class="fas fa-vote-yea"></i></a>
                             <a class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Editar"
                                href="{{ route('personeros.edit', $personero) }}"><i class="fas fa-edit"></i></a>
                             <form action="{{ route('personeros.destroy', $personero) }}" method="POST" class="d-inline"

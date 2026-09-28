@@ -21,6 +21,7 @@
     $personeroSelect = $personeroSel ?? $mesaSelect?->personero ?? $mesaFija?->personero;
     $personaSeleccionada = $personaSeleccionada ?? $personeroSelect?->persona;
     $mesas = $mesas ?? collect();
+    $personaElegida = $personaElegida ?? null;
     $tienePersonero = ! empty($personeroSelect);
 @endphp
 
@@ -62,33 +63,22 @@
                 </div>
                 <input type="hidden" name="mesa_id" id="mesa_id"
                        value="{{ old('mesa_id', $mesaSelect?->mesa_id ?? $mesaFija?->mesa_id) }}">
-                <input type="hidden" name="afiliado_id" id="afiliado_id"
-                       value="{{ old('afiliado_id', $personeroSelect?->afiliado_id) }}">
                 <div id="resultadoPersonero" class="mb-3"></div>
-                <div class="row" id="bloquePersonero" style="display: none;">
-                    <div class="col-12 col-md-4 mb-3">
-                        <label for="dni_personero" class="form-label"><strong>DNI del personero</strong></label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="dni_personero" maxlength="8"
-                                   placeholder="DNI para registrar personero" inputmode="numeric"
-                                   @if ($bloquearMesa && $tienePersonero) disabled @endif>
-                            <a class="btn btn-outline-success" id="btnRegistrarPersona"
-                               href="{{ route('personas.create', ['origen' => 'votos']) }}" style="display: none;"
-                               data-bs-toggle="tooltip" title="Registrar persona nueva con este DNI">
-                                <i class="fas fa-plus"></i>
-                            </a>
-                            <button type="button" class="btn btn-outline-primary" id="btnModalAfiliados"
-                                    data-bs-toggle="tooltip" title="Buscar afiliado en el listado"
-                                    @if ($bloquearMesa && $tienePersonero) disabled @endif>
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-8 mb-3">
-                        <label class="form-label"><strong>Datos encontrados</strong></label>
-                        <input type="text" class="form-control" id="persona_encontrada" readonly placeholder="Escriba los 8 dígitos del DNI para asignar el personero a la mesa">
-                        <div class="form-text">Al guardar el conteo también se registra el personero en la mesa.</div>
-                    </div>
+                {{-- Personero de la mesa: selector compartido de personas (la afiliación es opcional) --}}
+                <div id="bloquePersonero" style="display: none;">
+                    @include('partials.selector-persona', [
+                        'spOrigen' => 'votos',
+                        'spUrlBuscar' => route('votos.buscarPersona'),
+                        'spUrlModal' => route('votos.personasModal'),
+                        'spPersona' => $personeroSelect?->persona ?? $personaElegida,
+                        'spExtra' => ['mesa_id' => $mesaSelect?->mesa_id ?? $mesaFija?->mesa_id],
+                        'spBloquear' => $bloquearMesa && $tienePersonero,
+                        'spEtiqueta' => 'DNI del personero',
+                        'spEtiquetaNombre' => 'Datos encontrados',
+                        'spNombrePlaceholder' => 'Escriba los 8 dígitos del DNI para asignar el personero a la mesa',
+                        'spNotaModal' => 'Solo se listan personas que aún no son personeros. La afiliación se muestra si la persona la tiene (es opcional).',
+                        'spAyuda' => 'Al guardar el conteo también se registra el personero en la mesa.',
+                    ])
                 </div>
                 <div class="row">
                     <div class="col-12 col-md-6 mb-3">
@@ -218,81 +208,33 @@
 </div>
 @endif
 
-{{-- Modal de afiliados: buscar por DNI, nombres, apellidos y base --}}
-<div class="modal fade" id="modalAfiliados" tabindex="-1" aria-labelledby="modalAfiliadosLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalAfiliadosLabel">
-                    <i class="fas fa-users me-2"></i>Seleccionar afiliado
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body">
-                <p class="small text-muted">
-                    <i class="fas fa-info-circle me-1"></i>Busque por DNI, nombres, apellidos o base. Al elegir se asigna como personero de la mesa.
-                </p>
-                <div class="table-responsive">
-                    <table class="table table-sm table-striped table-hover w-100" id="tabla-modal-afiliados">
-                        <thead>
-                            <tr>
-                                <th>DNI</th>
-                                <th>Nombres</th>
-                                <th>Apellidos</th>
-                                <th>Base</th>
-                                <th class="text-end">Acción</th>
-                            </tr>
-                        </thead>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{{-- El listado y alta de personas es compartido: partials/selector-persona.blade.php --}}
 
 @csrf
 
 @section('footer')
     <script>
         $(document).ready(function () {
-            const urlBuscar = "{{ route('votos.buscarPersonero') }}";
-            const urlBuscarPersona = "{{ route('votos.buscarPersona') }}";
+            const urlBuscar = "{{ route('votos.buscarMesa') }}";
             const urlConteo = "{{ url('votos/mesa') }}";
             const $form = $('form').first();
             const $dni = $('#dni_buscar');
             const $nombre = $('#persona_nombre');
             const $mesaId = $('#mesa_id');
-            const $personaId = $('#afiliado_id');
+            // Persona que se registrará como personero de la mesa (la elige el selector compartido).
+            const $personaId = $('#persona_id');
             const $mesa = $('#mesa_personero');
             const $centro = $('#centro_personero');
             const $resultado = $('#resultadoPersonero');
             const $bloquePersonero = $('#bloquePersonero');
-            const $dniPersonero = $('#dni_personero');
-            const $personaEncontrada = $('#persona_encontrada');
             const esEdicion = {{ ($esEdicion ?? false) ? 'true' : 'false' }};
             // La mesa solo se puede buscar/elegir si NO está bloqueada (alta sin personero).
             const mesaBloqueada = $dni.prop('readonly') || $dni.prop('disabled') || esEdicion;
-            const $btnRegistrarPersona = $('#btnRegistrarPersona');
-            const urlRegistroPersona = "{{ route('personas.create', ['origen' => 'votos']) }}";
-            // La mesa ya tiene personero: dato del servidor (no depende del afiliado, que puede ser nulo).
+            // La mesa ya tiene personero: dato del servidor (independiente de la persona elegida).
             let mesaConPersonero = {{ $tienePersonero ? 'true' : 'false' }};
-            // En edición con personero ya existente no se permite cambiar ni añadir personero.
-            const mesaBloqueadaConPersonero = function () {
-                return mesaBloqueada && mesaConPersonero;
-            };
-            const mostrarBtnRegistrarPersona = function (dni) {
-                if (!$btnRegistrarPersona.length || mesaBloqueadaConPersonero()) { return; }
-                $btnRegistrarPersona.attr('href', urlRegistroPersona + '&dni=' + encodeURIComponent(dni)).show();
-            };
-            const ocultarBtnRegistrarPersona = function () { $btnRegistrarPersona.hide(); };
 
-            // Edición o mesa con personero existente: se oculta el bloque (solo se editan votos).
-            if ($mesaId.val() && mesaBloqueadaConPersonero()) {
-                $bloquePersonero.hide();
-                $dniPersonero.prop('disabled', true);
-                $('#btnModalAfiliados').prop('disabled', true);
-            } else if ($mesaId.val() && !$personaId.val()) {
-                // Muestra el registro de personero solo si la mesa aún no tiene uno.
+            // Mesa elegida sin personero: se muestra el registro del personero.
+            if ($mesaId.val() && !mesaConPersonero) {
                 $bloquePersonero.show();
             }
 
@@ -310,6 +252,11 @@
                 if (!$resultado.length) { return; }
                 $resultado.html('<p class="alert alert-' + tipo + ' py-2 mb-0">' + mensaje + '</p>');
             };
+            // Persona elegida con el selector: se refleja también en el campo superior.
+            $(document).on('persona:seleccionada', function (event, datos) {
+                if (!$mesaId.val() || mesaConPersonero) { return; }
+                $nombre.val(datos.nombre_completo || '');
+            });
             const fijarMesa = function (data) {
                 $mesaId.val(data.mesa_id || '');
                 $nombre.val(data.nombre_completo || '');
@@ -319,22 +266,22 @@
                 // Se actualiza el estado del personero según la mesa consultada.
                 mesaConPersonero = !!data.tiene_personero;
                 if (data.tiene_personero) {
-                    $personaId.val(data.afiliado_id || '');
+                    $personaId.val(data.persona_id || '');
                     $bloquePersonero.hide();
-                    $personaEncontrada.val('');
-                    ocultarBtnRegistrarPersona();
                 } else {
+                    // La mesa no tiene personero: se limpia la persona elegida antes.
                     $personaId.val('');
-                    $personaEncontrada.val('');
-                    ocultarBtnRegistrarPersona();
+                    $(document).trigger('persona:limpiar');
                     $bloquePersonero.show();
                 }
             };
             const limpiarMesa = function () {
                 if (mesaBloqueada) { return; }
                 mesaConPersonero = false;
-                $mesaId.val(''); $personaId.val(''); $nombre.val('');
-                $personaEncontrada.val(''); $bloquePersonero.hide(); resetearConteo();
+                $mesaId.val(''); $nombre.val('');
+                $bloquePersonero.hide();
+                $(document).trigger('persona:limpiar');
+                resetearConteo();
             };
 
             if (!mesaBloqueada) {
@@ -373,88 +320,9 @@
                 });
             }
 
-            // Personero: se permite buscar/asignar solo cuando la mesa aún no tiene personero.
-            if (!mesaBloqueadaConPersonero()) {
-                // Busca persona por DNI para asignarla como personero (igual que personeros).
-                const establecerAfiliado = function (id, dni, nombre) {
-                    $personaId.val(id);
-                    $dniPersonero.val(dni);
-                    $personaEncontrada.val(nombre + ' (DNI: ' + dni + ')');
-                    $nombre.val(nombre);
-                };
-                const limpiarAfiliado = function () {
-                    $personaId.val('');
-                    $personaEncontrada.val('');
-                };
-                const buscarAfiliadoPorDni = function () {
-                    const dni = ($dniPersonero.val() || '').replace(/\D/g, '');
-                    if (dni.length < 8) {
-                        limpiarAfiliado();
-                        pintarResultado('info', 'Ingrese los 8 dígitos del DNI para buscar al afiliado.');
-                        return;
-                    }
-                    $.getJSON(urlBuscarPersona, { dni: dni })
-                        .done(function (data) {
-                            ocultarBtnRegistrarPersona();
-                            establecerAfiliado(data.afiliado_id, data.dni, data.nombre_completo);
-                            pintarResultado('success', 'Afiliado seleccionado: <strong>' + data.nombre_completo + '</strong> (DNI: ' + data.dni + ').');
-                        })
-                        .fail(function (xhr) {
-                            limpiarAfiliado();
-                            const mensaje = (xhr.responseJSON && xhr.responseJSON.mensaje) ? xhr.responseJSON.mensaje : 'No fue posible buscar la persona.';
-                            pintarResultado('danger', mensaje + (xhr.status === 404 ? ' <a href="' + urlRegistroPersona + '&dni=' + encodeURIComponent(dni) + '">Registrar persona nueva</a>.' : ''));
-                            if (xhr.status === 404) { mostrarBtnRegistrarPersona(dni); }
-                        });
-                };
-                let temporizadorAfiliado = null;
-                $dniPersonero.on('input', function () {
-                    clearTimeout(temporizadorAfiliado);
-                    const dni = ($dniPersonero.val() || '').replace(/\D/g, '');
-                    if (dni.length === 8) {
-                        temporizadorAfiliado = setTimeout(buscarAfiliadoPorDni, 300);
-                    } else if (dni.length > 0) {
-                        limpiarAfiliado();
-                        ocultarBtnRegistrarPersona();
-                    } else { ocultarBtnRegistrarPersona(); }
-                });
-                $dniPersonero.on('keydown', function (e) {
-                    if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); buscarAfiliadoPorDni(); }
-                });
-                // Modal de afiliados: buscar por dni, nombres, apellidos y base (igual que modal personeros).
-                let tablaAfiliados = null;
-                $('#btnModalAfiliados').on('click', function () {
-                    if (!tablaAfiliados) {
-                        tablaAfiliados = $('#tabla-modal-afiliados').DataTable({
-                            processing: true, serverSide: true,
-                            language: { url: "{{ asset('datatables/spanish.json') }}" },
-                            ajax: { url: "{{ route('votos.afiliadosModal') }}" },
-                            columns: [
-                                { data: 'dni', name: 'dni' },
-                                { data: 'nombres', name: 'nombres' },
-                                { data: 'apellidos', name: 'apellidos' },
-                                { data: 'base', name: 'base' },
-                                { data: null, orderable: false, searchable: false, className: 'text-end',
-                                  render: function (data, type, row) {
-                                      return '<button type="button" class="btn btn-sm btn-primary btn-sel-afiliado"' +
-                                             ' data-persona-id="' + row.afiliado_id + '"' +
-                                             ' data-dni="' + row.dni + '"' +
-                                             ' data-nombre="' + row.nombre_completo + '">' +
-                                             '<i class="fas fa-check me-1"></i>Seleccionar</button>';
-                                  } },
-                            ],
-                            order: [[1, 'asc']], pageLength: 10,
-                            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, 'Todos']],
-                        });
-                    }
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAfiliados')).show();
-                    setTimeout(function () { tablaAfiliados.columns.adjust(); }, 300);
-                });
-                $(document).on('click', '.btn-sel-afiliado', function () {
-                    establecerAfiliado($(this).data('persona-id'), $(this).data('dni'), $(this).data('nombre'));
-                    pintarResultado('success', 'Afiliado seleccionado: <strong>' + $(this).data('nombre') + '</strong>.');
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAfiliados')).hide();
-                });
-            }
+            // El personero de la mesa se busca y registra con el selector compartido
+            // (partials/selector-persona.blade.php), que guarda la persona en #persona_id.
+            // El evento 'persona:seleccionada' se emite cuando se elige una persona.
 
             // Elección de mesa desde el listado: solo si la mesa no está bloqueada.
             if (!mesaBloqueada) {

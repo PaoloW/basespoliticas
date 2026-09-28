@@ -44,8 +44,10 @@ class VerificarAcceso
 
         'votos.index' => Menu::VER_CONTEOS,
         'votos.conteo' => [Menu::VER_CONTEOS, Menu::REGISTRAR_CONTEOS],
-        'votos.buscarPersonero' => [Menu::VER_CONTEOS, Menu::REGISTRAR_CONTEOS],
+        'votos.buscarMesa' => [Menu::VER_CONTEOS, Menu::REGISTRAR_CONTEOS],
+        'votos.buscarPersona' => [Menu::VER_CONTEOS, Menu::REGISTRAR_CONTEOS],
         'votos.personerosModal' => [Menu::VER_CONTEOS, Menu::REGISTRAR_CONTEOS],
+        'votos.personasModal' => [Menu::VER_CONTEOS, Menu::REGISTRAR_CONTEOS],
         'votos.registrar' => Menu::REGISTRAR_CONTEOS,
         'votos.guardar' => Menu::REGISTRAR_CONTEOS,
         'votos.edit' => [Menu::VER_CONTEOS, Menu::REGISTRAR_CONTEOS],
@@ -63,6 +65,7 @@ class VerificarAcceso
         'afiliados' => Menu::AFILIADOS_BASES,
         'usuarios' => Menu::USUARIOS,
         'personeros' => Menu::PERSONEROS,
+        'votos' => Menu::REGISTRAR_CONTEOS,
     ];
 
     /**

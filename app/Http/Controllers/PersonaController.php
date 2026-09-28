@@ -36,19 +36,22 @@ class PersonaController extends Controller
         $persona->dni = $request->query('dni');
         $origen = $this->origenValido($request->query('origen'));
         [$rutaOrigen, $etiquetaOrigen] = $this->destinoOrigen($origen);
+        // Mesa desde la que se llegó (registro de votos): permite volver a la misma mesa.
+        $mesaId = $request->query('mesa_id');
 
-        return view('personas.create', compact('persona', 'origen', 'rutaOrigen', 'etiquetaOrigen'));
+        return view('personas.create', compact('persona', 'origen', 'rutaOrigen', 'etiquetaOrigen', 'mesaId'));
     }
 
     /**
-     * Almacena una nueva persona y regresa al módulo de origen.
+     * Almacena una nueva persona y regresa al módulo de origen para continuar
+     * el proceso (se devuelve el DNI y la persona creada).
      */
     public function store(Request $request)
     {
         $data = $this->validar($request);
         $origen = $this->origenValido($request->input('origen'));
 
-        DB::transaction(function () use ($data) {
+        $persona = DB::transaction(function () use ($data) {
             $persona = new Persona();
             $persona->persona_id = (Persona::withTrashed()->max('persona_id') ?? 0) + 1;
             $persona->dni = $data['dni'];
@@ -61,9 +64,13 @@ class PersonaController extends Controller
             $persona->autor_id = Auth::id();
             $persona->editor_id = Auth::id();
             $persona->save();
+
+            return $persona;
         });
 
-        return redirect()->route($this->rutaOrigen($origen))->with('success', 'Persona registrada correctamente.');
+        return redirect()
+            ->route($this->rutaOrigen($origen), $this->parametrosOrigen($origen, $data['dni'], $persona->persona_id, $request->input('mesa_id')))
+            ->with('success', 'Persona registrada correctamente.');
     }
 
     /**
@@ -159,6 +166,27 @@ class PersonaController extends Controller
         ];
 
         return [route($this->rutaOrigen($origen)), $etiquetas[$origen] ?? 'Personas'];
+    }
+
+    /**
+     * Parámetros con los que se retoma el proceso del módulo de origen: el DNI
+     * buscado, la persona recién creada y la mesa (solo en el conteo de votos).
+     *
+     * @return array<string, mixed>
+     */
+    private function parametrosOrigen(string $origen, string $dni, int $personaId, mixed $mesaId = null): array
+    {
+        if ($origen === 'personas') {
+            return [];
+        }
+
+        $parametros = ['dni' => $dni, 'persona_id' => $personaId];
+
+        if ($origen === 'votos' && $mesaId) {
+            $parametros['mesa_id'] = (int) $mesaId;
+        }
+
+        return $parametros;
     }
 
     /**

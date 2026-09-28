@@ -180,6 +180,26 @@ class Persona extends Model
     }
 
     /**
+     * Afiliación vigente de la persona (fuente única para Personero y demás módulos).
+     */
+    public function afiliacionVigente(): ?Afiliado
+    {
+        if ($this->relationLoaded('afiliados')) {
+            return $this->afiliados->first();
+        }
+
+        return $this->afiliados()->latest('afiliado_id')->first();
+    }
+
+    /**
+     * Descripción de la afiliación: "Base (Cargo)", o "Sin afiliación" si no tiene.
+     */
+    public function descripcionAfiliacion(): string
+    {
+        return $this->afiliacionVigente()?->descripcionAfiliacion() ?? 'Sin afiliación';
+    }
+
+    /**
      * Indica si la persona es(personero de al menos una mesa.
      */
     public function esPersonero(): bool

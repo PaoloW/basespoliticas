@@ -16,8 +16,8 @@ return new class extends Migration
             $table->unsignedBigInteger('afiliado_id')->nullable()->after('personero_id');
         });
 
-        // Vincula cada personero con la afiliación activa de su persona.
-        DB::statement('UPDATE personeros p JOIN afiliados a ON a.persona_id = p.persona_id AND a.deleted_at IS NULL SET p.afiliado_id = a.afiliado_id WHERE p.afiliado_id IS NULL');
+        // Vincula cada personero con la afiliación activa de su persona (portable MySQL/SQLite).
+        DB::statement('UPDATE personeros SET afiliado_id = (SELECT a.afiliado_id FROM afiliados a WHERE a.persona_id = personeros.persona_id AND a.deleted_at IS NULL LIMIT 1) WHERE afiliado_id IS NULL');
 
         try {
             Schema::table('personeros', function (Blueprint $table) {

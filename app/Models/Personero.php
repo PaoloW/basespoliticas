@@ -33,7 +33,6 @@ class Personero extends Model
      */
     protected $fillable = [
         'personero_id',
-        'afiliado_id',
         'persona_id',
         'mesa_id',
         'conteo',
@@ -60,15 +59,8 @@ class Personero extends Model
     */
 
     /**
-     * La afiliación que actúa como personero.
-     */
-    public function afiliado(): BelongsTo
-    {
-        return $this->belongsTo(Afiliado::class, 'afiliado_id', 'afiliado_id');
-    }
-
-    /**
-     * La persona que actúa como personero (vía su afiliación).
+     * La persona que actúa como personero (la afiliación es información opcional
+     * que se consulta a través de ella).
      */
     public function persona(): BelongsTo
     {
@@ -96,6 +88,22 @@ class Personero extends Model
     | Operaciones de negocio
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Afiliación vigente de la persona (o null si no está afiliada).
+     */
+    public function afiliacionVigente(): ?Afiliado
+    {
+        return $this->persona?->afiliacionVigente();
+    }
+
+    /**
+     * Descripción de la afiliación del personero o "Sin afiliación" si no tiene.
+     */
+    public function descripcionAfiliacion(): string
+    {
+        return $this->afiliacionVigente()?->descripcionAfiliacion() ?? 'Sin afiliación';
+    }
 
     /**
      * Registra el conteo de votos, sobrescribiendo el valor anterior.
@@ -137,10 +145,10 @@ class Personero extends Model
     {
         return [
             'personero_id' => $this->personero_id,
-            'afiliado_id' => $this->afiliado_id,
             'persona_id' => $this->persona_id,
             'mesa_id' => $this->mesa_id,
             'persona' => $this->persona?->toRepresentacion(),
+            'afiliacion' => $this->descripcionAfiliacion(),
             'mesa' => $this->mesa?->toRepresentacion(),
             'conteo' => $this->conteo ?? 0,
         ];

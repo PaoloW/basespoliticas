@@ -74,9 +74,9 @@ Route::get('votos/mesa/{mesa}/conteo', [VotoController::class, 'conteo'])
     ->middleware('acceso');
 
 // Búsqueda de mesa con su personero y conteos, búsqueda de persona por DNI
-// (para registrar personero al vuelo) y listado paginado de mesas para el modal.
-Route::get('votos/buscar-personero', [VotoController::class, 'buscarPersoneroPorDni'])
-    ->name('votos.buscarPersonero')
+// (para registrar personero al vuelo) y listado paginado de mesas/personas para el modal.
+Route::get('votos/buscar-mesa', [VotoController::class, 'buscarMesa'])
+    ->name('votos.buscarMesa')
     ->middleware('auth')
     ->middleware('acceso');
 Route::get('votos/buscar-persona', [VotoController::class, 'buscarPersona'])
@@ -87,8 +87,8 @@ Route::get('votos/personeros-modal', [VotoController::class, 'personerosModal'])
     ->name('votos.personerosModal')
     ->middleware('auth')
     ->middleware('acceso');
-Route::get('votos/afiliados-modal', [VotoController::class, 'afiliadosModal'])
-    ->name('votos.afiliadosModal')
+Route::get('votos/personas-modal', [VotoController::class, 'personasModal'])
+    ->name('votos.personasModal')
     ->middleware('auth')
     ->middleware('acceso');
 

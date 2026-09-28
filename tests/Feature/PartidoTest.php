@@ -58,7 +58,7 @@ class PartidoTest extends TestCase
     public function test_se_puede_registrar_un_partido(): void
     {
         $this->actingAs($this->usuarioAdmin())
-            ->post(route('partidos.store'), ['nombre' => 'Partido Azul'])
+            ->post(route('partidos.store'), ['nombre' => 'Partido Azul', 'orden' => 1])
             ->assertRedirect(route('partidos.index'));
 
         $this->assertDatabaseHas('partidos', ['nombre' => 'Partido Azul']);
@@ -98,7 +98,7 @@ class PartidoTest extends TestCase
         $partido = Partido::create(['nombre' => 'Partido Azul']);
 
         $this->actingAs($this->usuarioAdmin())
-            ->put(route('partidos.update', $partido), ['nombre' => 'Partido Rojo'])
+            ->put(route('partidos.update', $partido), ['nombre' => 'Partido Rojo', 'orden' => 1])
             ->assertRedirect(route('partidos.index'));
 
         $this->assertDatabaseHas('partidos', [
