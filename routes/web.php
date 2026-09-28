@@ -34,6 +34,10 @@ Route::get('/home', function () {
 Route::get('usuarios/buscar-persona', [UsuarioController::class, 'buscarPersonaPorDni'])
     ->name('usuarios.buscarPersona')
     ->middleware('auth');
+// Personas sin cuenta de usuario, para el modal paginado en el servidor.
+Route::get('usuarios/personas', [UsuarioController::class, 'personas'])
+    ->name('usuarios.personas')
+    ->middleware('auth');
 
 Route::resource('usuarios', UsuarioController::class)->except(['show'])->middleware('auth');
 Route::resource('personas', PersonaController::class)->except(['show'])->middleware('auth');
@@ -48,13 +52,7 @@ Route::resource('votos', VotoController::class)->except(['show'])->middleware('a
 Route::get('afiliados/buscar-persona', [AfiliadoController::class, 'buscarPersona'])
     ->name('afiliados.buscarPersona')
     ->middleware('auth');
-Route::get('afiliados/buscar-base', [AfiliadoController::class, 'buscarBase'])
-    ->name('afiliados.buscarBase')
-    ->middleware('auth');
 Route::get('afiliados/personas', [AfiliadoController::class, 'personas'])
     ->name('afiliados.personas')
-    ->middleware('auth');
-Route::get('afiliados/bases', [AfiliadoController::class, 'bases'])
-    ->name('afiliados.bases')
     ->middleware('auth');
 Route::resource('afiliados', AfiliadoController::class)->except(['show'])->middleware('auth');

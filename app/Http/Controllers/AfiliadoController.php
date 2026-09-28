@@ -33,10 +33,10 @@ class AfiliadoController extends Controller
     {
         $afiliado = new Afiliado();
         $cargos = $this->cargosOrdenados();
+        $bases = $this->basesOrdenadas();
         $personaSeleccionada = old('persona_id') ? Persona::where('persona_id', old('persona_id'))->first() : null;
-        $baseSeleccionada = old('base_id') ? Base::where('base_id', old('base_id'))->first() : null;
 
-        return view('afiliados.create', compact('afiliado', 'cargos', 'personaSeleccionada', 'baseSeleccionada'));
+        return view('afiliados.create', compact('afiliado', 'cargos', 'bases', 'personaSeleccionada'));
     }
 
     /**
@@ -67,10 +67,10 @@ class AfiliadoController extends Controller
     public function edit(Afiliado $afiliado)
     {
         $cargos = $this->cargosOrdenados();
+        $bases = $this->basesOrdenadas();
         $personaSeleccionada = $afiliado->persona;
-        $baseSeleccionada = $afiliado->base;
 
-        return view('afiliados.edit', compact('afiliado', 'cargos', 'personaSeleccionada', 'baseSeleccionada'));
+        return view('afiliados.edit', compact('afiliado', 'cargos', 'bases', 'personaSeleccionada'));
     }
 
     /**
@@ -141,32 +141,6 @@ class AfiliadoController extends Controller
     }
 
     /**
-     * Busca una base por su descripción (AJAX).
-     */
-    public function buscarBase(Request $request)
-    {
-        $descripcion = trim((string) $request->query('descripcion', ''));
-
-        if ($descripcion === '') {
-            return response()->json(['mensaje' => 'Ingrese la descripción de la base.'], 422);
-        }
-
-        $base = Base::where('descripcion', 'like', '%'.$descripcion.'%')
-            ->orderBy('descripcion')
-            ->first();
-
-        if (! $base) {
-            return response()->json(['mensaje' => 'No se encontró ninguna base con esa descripción.'], 404);
-        }
-
-        return response()->json([
-            'base_id' => $base->base_id,
-            'descripcion' => $base->descripcion,
-            'ubicacion' => $base->ubicacion,
-        ]);
-    }
-
-    /**
      * Personas sin afiliación activa para el modal (paginado en el servidor).
      */
     public function personas()
@@ -178,16 +152,6 @@ class AfiliadoController extends Controller
         return DataTables::eloquent($query)
             ->addColumn('persona', fn (Persona $persona) => $persona->apellidoNombre())
             ->toJson();
-    }
-
-    /**
-     * Bases disponibles para el modal (paginado en el servidor).
-     */
-    public function bases()
-    {
-        $query = Base::query()->withCount('afiliados');
-
-        return DataTables::eloquent($query)->toJson();
     }
 
     /*
@@ -202,6 +166,14 @@ class AfiliadoController extends Controller
     private function cargosOrdenados()
     {
         return Cargo::orderBy('descripcion')->get();
+    }
+
+    /**
+     * Bases ordenadas por descripción con su partido, para el select del formulario.
+     */
+    private function basesOrdenadas()
+    {
+        return Base::with('partido')->orderBy('descripcion')->get();
     }
 
     /**

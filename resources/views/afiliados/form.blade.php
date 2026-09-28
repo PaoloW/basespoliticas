@@ -59,30 +59,23 @@
 
                 {{-- Base --}}
                 <div class="row">
-                    <div class="col-12 col-md-4 mb-3">
-                        <label for="base_buscar" class="form-label"><strong>Base</strong></label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="base_buscar" name="base_buscar"
-                                   value="{{ old('base_buscar', $baseSeleccionada->descripcion ?? '') }}"
-                                   placeholder="Descripción de la base" spellcheck="false" autocomplete="off">
-                            <button type="button" class="btn btn-outline-primary" id="btnModalBases"
-                                    data-bs-toggle="tooltip" title="Buscar base en el listado">
-                                <i class="fas fa-search me-1"></i>Buscar
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-8 mb-3">
-                        <label for="base_ubicacion" class="form-label">Ubicación</label>
-                        <input type="text" class="form-control" id="base_ubicacion" readonly
-                               value="{{ old('base_ubicacion', $baseSeleccionada->ubicacion ?? '') }}"
-                               placeholder="Se completa al buscar la base">
-                        <div class="form-text">
-                            <i class="fas fa-info-circle me-1"></i>Escriba la descripción o use <strong>Buscar</strong> para elegir una base del listado.
-                        </div>
+                    <div class="col-12 col-md-6 mb-3">
+                        <label for="base_id" class="form-label"><strong>Base</strong></label>
+                        <select class="form-select" name="base_id" id="base_id">
+                            <option value="">Seleccione una base</option>
+                            @forelse ( $bases as $base )
+                                <option value="{{ $base->base_id }}"
+                                        @if ( old( 'base_id', $afiliado->base_id ) == $base->base_id ) selected @endif>
+                                    {{ $base->descripcion }}{{ $base->ubicacion ? ' ('.$base->ubicacion.')' : '' }}
+                                </option>
+                            @empty
+                                <option value="" disabled>No hay bases registradas</option>
+                            @endforelse
+                        </select>
+                        <div class="form-text">Bases del módulo <a href="{{ route('bases.index') }}">Bases</a>.</div>
+                        <div id="resultadoBase"></div>
                     </div>
                 </div>
-                <input type="hidden" name="base_id" id="base_id" value="{{ old('base_id', $afiliado->base_id) }}">
-                <div id="resultadoBase" class="mb-3"></div>
 
                 {{-- Cargo --}}
                 <div class="row">
@@ -169,33 +162,7 @@
     </div>
 </div>
 
-{{-- Modal de bases --}}
-<div class="modal fade" id="modalBases" tabindex="-1" aria-labelledby="modalBasesLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalBasesLabel">
-                    <i class="fas fa-database me-2"></i>Seleccionar base
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body">
-                <div class="table-responsive">
-                    <table class="table table-sm table-striped table-hover w-100" id="tabla-modal-bases">
-                        <thead>
-                            <tr>
-                                <th>Descripción</th>
-                                <th>Ubicación</th>
-                                <th class="text-center">Afiliados</th>
-                                <th class="text-end">Acción</th>
-                            </tr>
-                        </thead>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 @section('footer')
     <script>
@@ -210,6 +177,18 @@
                 theme: 'bootstrap-5',
                 width: '100%',
                 placeholder: 'Seleccione un cargo',
+                allowClear: true,
+                language: {
+                    noResults: function () { return 'Sin resultados'; },
+                    searching: function () { return 'Buscando...'; },
+                },
+            });
+
+            // Base: dropdown con búsqueda (select2).
+            $('#base_id').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Seleccione una base',
                 allowClear: true,
                 language: {
                     noResults: function () { return 'Sin resultados'; },
@@ -234,7 +213,7 @@
             };
 
             // Tablas de los modales: se inicializan la primera vez que se abren.
-            const tablas = { personas: null, bases: null };
+            const tablas = { personas: null };
 
             const inicializarTablaPersonas = function () {
                 if (tablas.personas) {
@@ -265,53 +244,18 @@
                 });
             };
 
-            const inicializarTablaBases = function () {
-                if (tablas.bases) {
-                    return;
-                }
-                tablas.bases = $('#tabla-modal-bases').DataTable({
-                    processing: true,
-                    serverSide: true,
-                    language: { url: "{{ asset('datatables/spanish.json') }}" },
-                    ajax: { url: "{{ route('afiliados.bases') }}" },
-                    columns: [
-                        { data: 'descripcion', name: 'descripcion' },
-                        { data: 'ubicacion', name: 'ubicacion',
-                          render: function (data) { return data ? data : '—'; } },
-                        { data: 'afiliados_count', orderable: false, searchable: false, className: 'text-center',
-                          render: function (data) { return data ? data : 0; } },
-                        { data: null, orderable: false, searchable: false, className: 'text-end',
-                          render: function (data, type, row) {
-                              return '<button type="button" class="btn btn-sm btn-primary btn-seleccionar-base"' +
-                                     ' data-base-id="' + row.base_id + '"' +
-                                     ' data-descripcion="' + row.descripcion + '"' +
-                                     ' data-ubicacion="' + (row.ubicacion ? row.ubicacion : '') + '">' +
-                                     '<i class="fas fa-check me-1"></i>Seleccionar</button>';
-                          } },
-                    ],
-                    order: [[0, 'asc']],
-                    pageLength: 10,
-                    lengthMenu: [[10, 25, 50, -1], [10, 25, 50, 'Todos']],
-                });
-            };
-
-            // Abrir los modales (se inicializan las tablas al primer uso).
+            // Abrir el modal de personas (se inicializa la tabla al primer uso).
             $('#btnModalPersonas').on('click', function () {
                 inicializarTablaPersonas();
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPersonas')).show();
                 setTimeout(function () { tablas.personas.columns.adjust(); }, 300);
             });
 
-            $('#btnModalBases').on('click', function () {
-                inicializarTablaBases();
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBases')).show();
-                setTimeout(function () { tablas.bases.columns.adjust(); }, 300);
-            });
-
             // Búsqueda de persona por DNI.
             const $dni = $('#dni_buscar');
             const $personaId = $('#persona_id');
             const $personaNombre = $('#persona_nombre');
+            const $resultadoBase = $('#resultadoBase');
             const $resultadoCargo = $('#resultadoCargo');
 
             const establecerPersona = function (id, dni, nombre) {
@@ -374,58 +318,6 @@
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPersonas')).hide();
             });
 
-            // Búsqueda de base por descripción.
-            const $baseDescripcion = $('#base_buscar');
-            const $baseId = $('#base_id');
-            const $baseUbicacion = $('#base_ubicacion');
-
-            const establecerBase = function (id, descripcion, ubicacion) {
-                $baseId.val(id);
-                $baseDescripcion.val(descripcion);
-                $baseUbicacion.val(ubicacion || '');
-            };
-
-            const limpiarBase = function () {
-                $baseId.val('');
-                $baseUbicacion.val('');
-            };
-
-            const buscarBase = function () {
-                const descripcion = ($baseDescripcion.val() || '').trim();
-                if (descripcion === '') {
-                    limpiarBase();
-                    pintar($resultadoBase, 'info', 'Ingrese la descripción de la base para buscarla.');
-                    return;
-                }
-                $.getJSON("{{ route('afiliados.buscarBase') }}", { descripcion: descripcion })
-                    .done(function (data) {
-                        establecerBase(data.base_id, data.descripcion, data.ubicacion);
-                        pintar($resultadoBase, 'success', 'Base seleccionada: <strong>' + data.descripcion + '</strong>');
-                    })
-                    .fail(function (xhr) {
-                        limpiarBase();
-                        const mensaje = (xhr.responseJSON && xhr.responseJSON.mensaje)
-                            ? xhr.responseJSON.mensaje
-                            : 'No fue posible realizar la búsqueda.';
-                        pintar($resultadoBase, 'danger', mensaje);
-                    });
-            };
-
-            $baseDescripcion.on('keydown', function (e) {
-                if (e.key === 'Enter' || e.keyCode === 13) {
-                    e.preventDefault();
-                    buscarBase();
-                }
-            });
-
-            // Selección desde el modal de bases.
-            $(document).on('click', '.btn-seleccionar-base', function () {
-                const descripcion = $(this).data('descripcion');
-                establecerBase($(this).data('base-id'), descripcion, $(this).data('ubicacion'));
-                pintar($resultadoBase, 'success', 'Base seleccionada: <strong>' + descripcion + '</strong>');
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalBases')).hide();
-            });
-
             $('#cargo_id').on('change', function () {
                 if ($(this).val()) {
                     $resultadoCargo.html('');
@@ -439,9 +331,8 @@
                     $dni.focus();
                     return false;
                 }
-                if (!$baseId.val()) {
+                if (!$('#base_id').val()) {
                     pintar($resultadoBase, 'danger', 'Debe seleccionar una base antes de guardar.');
-                    $baseDescripcion.focus();
                     return false;
                 }
                 if (!$('#cargo_id').val()) {

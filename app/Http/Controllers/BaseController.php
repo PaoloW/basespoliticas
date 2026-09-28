@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Base;
+use App\Models\Partido;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,8 @@ class BaseController extends Controller
      */
     public function index()
     {
-        $bases = Base::withCount('afiliados')
+        $bases = Base::with('partido')
+            ->withCount('afiliados')
             ->orderBy('descripcion')
             ->get();
 
@@ -27,8 +29,9 @@ class BaseController extends Controller
     public function create()
     {
         $base = new Base();
+        $partidos = $this->partidosOrdenados();
 
-        return view('bases.create', compact('base'));
+        return view('bases.create', compact('base', 'partidos'));
     }
 
     /**
@@ -40,6 +43,7 @@ class BaseController extends Controller
 
         DB::transaction(function () use ($data) {
             $base = new Base();
+            $base->partido_id = $data['partido_id'] ?? null;
             $base->descripcion = $data['descripcion'];
             $base->ubicacion = $data['ubicacion'] ?? null;
             $base->autor_id = Auth::id();
@@ -55,7 +59,9 @@ class BaseController extends Controller
      */
     public function edit(Base $base)
     {
-        return view('bases.edit', compact('base'));
+        $partidos = $this->partidosOrdenados();
+
+        return view('bases.edit', compact('base', 'partidos'));
     }
 
     /**
@@ -66,6 +72,7 @@ class BaseController extends Controller
         $data = $this->validar($request);
 
         DB::transaction(function () use ($base, $data) {
+            $base->partido_id = $data['partido_id'] ?? null;
             $base->descripcion = $data['descripcion'];
             $base->ubicacion = $data['ubicacion'] ?? null;
             $base->editor_id = Auth::id();
@@ -99,11 +106,21 @@ class BaseController extends Controller
     private function validar(Request $request)
     {
         return $request->validate([
+            'partido_id' => 'nullable|integer|exists:partidos,partido_id',
             'descripcion' => 'required|string|max:255',
             'ubicacion' => 'nullable|string|max:255',
         ], [], [
+            'partido_id' => 'partido',
             'descripcion' => 'descripción',
             'ubicacion' => 'ubicación',
         ]);
+    }
+
+    /**
+     * Partidos ordenados por nombre, para el select del formulario.
+     */
+    private function partidosOrdenados()
+    {
+        return Partido::orderBy('nombre')->get();
     }
 }

@@ -44,6 +44,14 @@ class Partido extends Model
     */
 
     /**
+     * Bases pertenecientes a este partido.
+     */
+    public function bases(): HasMany
+    {
+        return $this->hasMany(Base::class, 'partido_id', 'partido_id');
+    }
+
+    /**
      * Registros de votos de este partido.
      */
     public function votos(): HasMany

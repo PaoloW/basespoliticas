@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Yajra\DataTables\Facades\DataTables;
 
 class UsuarioController extends Controller
 {
@@ -65,7 +66,7 @@ class UsuarioController extends Controller
             return response()->json(['mensaje' => 'No se encontró ninguna persona con el DNI ingresado.'], 404);
         }
 
-        if ($persona->usuario()->exists()) {
+        if ($persona->usuario()->withTrashed()->exists()) {
             return response()->json([
                 'mensaje' => 'La persona '.$persona->apellidoNombre().' (DNI: '.$persona->dni.') ya tiene una cuenta de usuario.',
             ], 409);
@@ -76,6 +77,20 @@ class UsuarioController extends Controller
             'dni' => $persona->dni,
             'nombre_completo' => $persona->apellidoNombre(),
         ]);
+    }
+
+    /**
+     * Personas sin cuenta de usuario para el modal (paginado en el servidor).
+     */
+    public function personas()
+    {
+        $query = Persona::query()
+            ->whereDoesntHave('usuario', fn ($usuario) => $usuario->withTrashed())
+            ->select(['persona_id', 'dni', 'nombres', 'primer_apellido', 'segundo_apellido', 'telefono']);
+
+        return DataTables::eloquent($query)
+            ->addColumn('persona', fn (Persona $persona) => $persona->apellidoNombre())
+            ->toJson();
     }
 
     /**

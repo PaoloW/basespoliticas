@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -32,6 +33,7 @@ class Base extends Model
      */
     protected $fillable = [
         'base_id',
+        'partido_id',
         'descripcion',
         'ubicacion',
         'autor_id',
@@ -43,6 +45,14 @@ class Base extends Model
     | Relaciones
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * El partido político al que pertenece la base.
+     */
+    public function partido(): BelongsTo
+    {
+        return $this->belongsTo(Partido::class, 'partido_id', 'partido_id');
+    }
 
     /**
      * Afiliados registrados en esta base.
@@ -91,6 +101,8 @@ class Base extends Model
     {
         return [
             'base_id' => $this->base_id,
+            'partido_id' => $this->partido_id,
+            'partido' => $this->partido?->toRepresentacion(),
             'descripcion' => $this->descripcion,
             'ubicacion' => $this->ubicacion,
             'afiliados' => $this->totalAfiliados(),

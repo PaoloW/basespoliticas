@@ -42,6 +42,7 @@
                     <tr>
                         <th>#</th>
                         <th>Descripción</th>
+                        <th>Partido</th>
                         <th>Ubicación</th>
                         <th class="text-center">Afiliados</th>
                         <th class="text-end">Acciones</th>
@@ -52,6 +53,7 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $base->descripcion }}</td>
+                        <td>{{ $base->partido?->nombre ?? '—' }}</td>
                         <td>{{ $base->ubicacion ?? '—' }}</td>
                         <td class="text-center">{{ $base->afiliados_count }}</td>
                         <td class="text-end text-nowrap">
@@ -84,7 +86,7 @@
                 extend: extend,
                 text: '<i class="' + icono + ' me-1"></i>' + texto,
                 className: 'btn btn-sm ' + clase,
-                exportOptions: { columns: [0, 1, 2, 3] },
+                exportOptions: { columns: [0, 1, 2, 3, 4] },
             });
 
             $('#tabla-bases').DataTable({

@@ -21,22 +21,32 @@
                 <div class="row mb-3">
                     <div class="col-12">
                         @if ( empty( $usuario->usuario_id ) )
-                            <label for="buscarDni" class="form-label"><strong>DNI del usuario</strong></label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="buscarDni" name="dni_buscar"
-                                       placeholder="Ingrese el DNI de la persona (ej. 12345678)" spellcheck="false"
-                                       autocorrect="off" autocapitalize="off" autocomplete="off"
-                                       inputmode="numeric" maxlength="20" aria-describedby="btnBuscarDni">
-                                <button type="button" class="btn btn-outline-primary" id="btnBuscarDni"
-                                        data-bs-toggle="tooltip" title="Buscar persona por DNI">
-                                    <i class="fas fa-search me-1"></i>Buscar
-                                </button>
-                            </div>
-                            <div class="form-text">
-                                <i class="fas fa-info-circle me-1"></i>Al ingresar el DNI se buscará a la persona; si existe, se mostrará su nombre completo para agregarla como nuevo usuario.
+                            <div class="row">
+                                <div class="col-12 col-md-4 mb-3">
+                                    <label for="dni_buscar" class="form-label"><strong>DNI del usuario</strong></label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="dni_buscar" name="dni_buscar"
+                                               value="{{ old('dni_buscar', $personaSeleccionada->dni ?? '') }}"
+                                               placeholder="Ingrese el DNI" spellcheck="false" autocorrect="off"
+                                               autocapitalize="off" autocomplete="off" inputmode="numeric" maxlength="20">
+                                        <button type="button" class="btn btn-outline-primary" id="btnModalPersonas"
+                                                data-bs-toggle="tooltip" title="Buscar persona en el listado">
+                                            <i class="fas fa-search me-1"></i>Buscar
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-8 mb-3">
+                                    <label for="persona_nombre" class="form-label"><strong>Nombres</strong></label>
+                                    <input type="text" class="form-control" id="persona_nombre" readonly
+                                           value="{{ old('persona_nombre', $personaSeleccionada?->apellidoNombre() ?? '') }}"
+                                           placeholder="Se completa al buscar la persona">
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle me-1"></i>Escriba el DNI o use <strong>Buscar</strong> para elegir una persona del listado.
+                                    </div>
+                                </div>
                             </div>
                             <input type="hidden" name="persona_id" id="persona_id" value="{{ old('persona_id') }}">
-                            <div id="resultadoPersona" class="mt-2">
+                            <div id="resultadoPersona" class="mb-3">
                                 @if ( ! empty( $personaSeleccionada ?? null ) )
                                     <p class="alert alert-success py-2 mb-0">
                                         <i class="fas fa-user-check me-1"></i>
@@ -123,15 +133,80 @@
     </div>
 </div>
 
+@if ( empty( $usuario->usuario_id ) )
+{{-- Modal de personas --}}
+<div class="modal fade" id="modalPersonas" tabindex="-1" aria-labelledby="modalPersonasLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalPersonasLabel">
+                    <i class="fas fa-user me-2"></i>Seleccionar persona
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted">
+                    <i class="fas fa-info-circle me-1"></i>Solo se listan personas sin cuenta de usuario.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped table-hover w-100" id="tabla-modal-personas">
+                        <thead>
+                            <tr>
+                                <th>DNI</th>
+                                <th>Persona</th>
+                                <th>Teléfono</th>
+                                <th class="text-end">Acción</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 @csrf
 
 @section('footer')
     <script>
         $(document).ready(function () {
             const $form = $('form');
-            const $dni = $('#buscarDni');
+            const $dni = $('#dni_buscar');
             const $resultado = $('#resultadoPersona');
             const $personaId = $('#persona_id');
+            const $personaNombre = $('#persona_nombre');
+
+            // Tabla del modal: se inicializa la primera vez que se abre.
+            let tablaPersonas = null;
+            const inicializarTablaPersonas = function () {
+                if (tablaPersonas) {
+                    return;
+                }
+                tablaPersonas = $('#tabla-modal-personas').DataTable({
+                    processing: true,
+                    serverSide: true,
+                    language: { url: "{{ asset('datatables/spanish.json') }}" },
+                    ajax: { url: "{{ route('usuarios.personas') }}" },
+                    columns: [
+                        { data: 'dni', name: 'dni' },
+                        { data: 'persona', orderable: false, searchable: false },
+                        { data: 'telefono', orderable: false, searchable: false,
+                          render: function (data) { return data ? data : '—'; } },
+                        { data: null, orderable: false, searchable: false, className: 'text-end',
+                          render: function (data, type, row) {
+                              return '<button type="button" class="btn btn-sm btn-primary btn-seleccionar-persona"' +
+                                     ' data-persona-id="' + row.persona_id + '"' +
+                                     ' data-dni="' + row.dni + '"' +
+                                     ' data-nombre="' + row.persona + '">' +
+                                     '<i class="fas fa-check me-1"></i>Seleccionar</button>';
+                          } },
+                    ],
+                    order: [[0, 'asc']],
+                    pageLength: 10,
+                    lengthMenu: [[10, 25, 50, -1], [10, 25, 50, 'Todos']],
+                });
+            };
 
             const pintarResultado = function (tipo, html) {
                 if (!$resultado.length) {
@@ -148,6 +223,17 @@
 
             // Solo el formulario de creación incluye el buscador por DNI.
             if ($dni.length) {
+                const establecerPersona = function (id, dni, nombre) {
+                    $personaId.val(id);
+                    $dni.val(dni);
+                    $personaNombre.val(nombre);
+                };
+
+                const limpiarPersona = function () {
+                    $personaId.val('');
+                    $personaNombre.val('');
+                };
+
                 let temporizador = null;
 
                 const normalizarDni = function (valor) {
@@ -158,21 +244,21 @@
                     const dni = normalizarDni($dni.val());
 
                     if (dni.length < 8) {
-                        $personaId.val('');
+                        limpiarPersona();
                         pintarResultado('info', 'Ingrese al menos 8 dígitos del DNI para buscar la persona.');
                         return;
                     }
 
                     $.getJSON('{{ route('usuarios.buscarPersona') }}', { dni: dni })
                         .done(function (data) {
-                            $personaId.val(data.persona_id);
+                            establecerPersona(data.persona_id, data.dni, data.nombre_completo);
                             pintarResultado(
                                 'success',
                                 'Persona encontrada: <strong>' + data.nombre_completo + '</strong> (DNI: ' + data.dni + '). Se agregará como nuevo usuario.'
                             );
                         })
                         .fail(function (xhr) {
-                            $personaId.val('');
+                            limpiarPersona();
                             const mensaje = (xhr.responseJSON && xhr.responseJSON.mensaje)
                                 ? xhr.responseJSON.mensaje
                                 : 'No fue posible realizar la búsqueda. Intente nuevamente.';
@@ -186,7 +272,7 @@
                     if (dni.length === 8) {
                         temporizador = setTimeout(buscarPersona, 300);
                     } else {
-                        $personaId.val('');
+                        limpiarPersona();
                         pintarResultado('info', 'Ingrese el DNI de la persona para buscarla.');
                     }
                 });
@@ -198,7 +284,20 @@
                     }
                 });
 
-                $('#btnBuscarDni').on('click', buscarPersona);
+                // Abrir el modal de personas (se inicializa la tabla al primer uso).
+                $('#btnModalPersonas').on('click', function () {
+                    inicializarTablaPersonas();
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPersonas')).show();
+                    setTimeout(function () { tablaPersonas.columns.adjust(); }, 300);
+                });
+
+                // Selección desde el modal de personas.
+                $(document).on('click', '.btn-seleccionar-persona', function () {
+                    const nombre = $(this).data('nombre');
+                    establecerPersona($(this).data('persona-id'), $(this).data('dni'), nombre);
+                    pintarResultado('success', 'Persona seleccionada: <strong>' + nombre + '</strong>.');
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPersonas')).hide();
+                });
             }
 
             $form.on('submit', function () {
