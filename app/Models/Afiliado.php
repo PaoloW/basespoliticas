@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Afiliado extends Model
@@ -74,6 +75,14 @@ class Afiliado extends Model
     | Operaciones de negocio
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Los registros donde la afiliación actúa como personero de mesa.
+     */
+    public function personeros(): HasMany
+    {
+        return $this->hasMany(Personero::class, 'afiliado_id', 'afiliado_id');
+    }
 
     /**
      * Descripción corta: "Persona — Base (Cargo)".

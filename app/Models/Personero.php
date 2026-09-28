@@ -33,6 +33,7 @@ class Personero extends Model
      */
     protected $fillable = [
         'personero_id',
+        'afiliado_id',
         'persona_id',
         'mesa_id',
         'conteo',
@@ -59,7 +60,15 @@ class Personero extends Model
     */
 
     /**
-     * La persona que actúa como personero.
+     * La afiliación que actúa como personero.
+     */
+    public function afiliado(): BelongsTo
+    {
+        return $this->belongsTo(Afiliado::class, 'afiliado_id', 'afiliado_id');
+    }
+
+    /**
+     * La persona que actúa como personero (vía su afiliación).
      */
     public function persona(): BelongsTo
     {
@@ -128,6 +137,7 @@ class Personero extends Model
     {
         return [
             'personero_id' => $this->personero_id,
+            'afiliado_id' => $this->afiliado_id,
             'persona_id' => $this->persona_id,
             'mesa_id' => $this->mesa_id,
             'persona' => $this->persona?->toRepresentacion(),

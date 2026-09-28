@@ -87,6 +87,10 @@ Route::get('votos/personeros-modal', [VotoController::class, 'personerosModal'])
     ->name('votos.personerosModal')
     ->middleware('auth')
     ->middleware('acceso');
+Route::get('votos/afiliados-modal', [VotoController::class, 'afiliadosModal'])
+    ->name('votos.afiliadosModal')
+    ->middleware('auth')
+    ->middleware('acceso');
 
 // Ver conteo de votos: reporte de personeros que registraron votos.
 Route::get('votos', [VotoController::class, 'index'])

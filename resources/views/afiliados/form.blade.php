@@ -139,6 +139,7 @@
 
 @csrf
 
+@unless ( $esEdicion )
 {{-- Modal de personas --}}
 <div class="modal fade" id="modalPersonas" tabindex="-1" aria-labelledby="modalPersonasLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -169,6 +170,7 @@
         </div>
     </div>
 </div>
+@endunless
 
 
 
@@ -206,6 +208,10 @@
 
             const $resultadoPersona = $('#resultadoPersona');
             const $resultadoBase = $('#resultadoBase');
+            const $resultadoCargo = $('#resultadoCargo');
+            const $dni = $('#dni_buscar');
+            const $personaId = $('#persona_id');
+            const $personaNombre = $('#persona_nombre');
 
             const pintar = function ($contenedor, tipo, html) {
                 if (!$contenedor.length) {
@@ -260,13 +266,6 @@
             });
 
             // Búsqueda de persona por DNI.
-            const $dni = $('#dni_buscar');
-            const $personaId = $('#persona_id');
-            const $personaNombre = $('#persona_nombre');
-            const $resultadoBase = $('#resultadoBase');
-            const $resultadoCargo = $('#resultadoCargo');
-
-            // Botón "+" para registrar la persona cuando el DNI no existe.
             const $btnRegistrarPersona = $('#btnRegistrarPersona');
             const urlRegistroPersona = '{{ route('personas.create', ['origen' => 'afiliados']) }}';
 

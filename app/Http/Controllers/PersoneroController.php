@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Acceso;
+use App\Models\Afiliado;
 use App\Models\Menu;
 use App\Models\Mesa;
-use App\Models\Persona;
 use App\Models\Personero;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
@@ -37,58 +37,63 @@ class PersoneroController extends Controller
     {
         $personero = new Personero();
         $mesas = $this->mesasOrdenadas();
-        $personaSeleccionada = old('persona_id')
-            ? Persona::where('persona_id', old('persona_id'))->first()
+        $afiliadoSeleccionado = old('afiliado_id')
+            ? Afiliado::with('persona')->where('afiliado_id', old('afiliado_id'))->first()
             : null;
+        $personaSeleccionada = $afiliadoSeleccionado?->persona;
 
-        return view('personeros.create', compact('personero', 'mesas', 'personaSeleccionada'));
+        return view('personeros.create', compact('personero', 'mesas', 'afiliadoSeleccionado', 'personaSeleccionada'));
     }
 
     /**
-     * Busca una persona por su DNI para asignarla como personero (AJAX).
+     * Busca un afiliado por su DNI para asignarlo como personero (AJAX).
      */
     public function buscarPersona(Request $request)
     {
         $dni = preg_replace('/\D/', '', (string) $request->query('dni', ''));
 
         if ($dni === '') {
-            return response()->json(['mensaje' => 'Ingrese un DNI para buscar la persona.'], 422);
+            return response()->json(['mensaje' => 'Ingrese un DNI para buscar al afiliado.'], 422);
         }
 
-        $persona = Persona::whereRaw(
-            "REPLACE(REPLACE(REPLACE(TRIM(dni), '.', ''), '-', ''), ' ', '') = ?",
-            [$dni]
-        )->first();
+        $afiliado = Afiliado::with('persona')
+            ->whereHas('persona', fn ($q) => $q->whereRaw(
+                "REPLACE(REPLACE(REPLACE(TRIM(dni), '.', ''), '-', ''), ' ', '') = ?",
+                [$dni]
+            ))->first();
 
-        if (! $persona) {
-            return response()->json(['mensaje' => 'No se encontró ninguna persona con el DNI ingresado.'], 404);
+        if (! $afiliado) {
+            return response()->json(['mensaje' => 'No se encontró ningún afiliado con el DNI ingresado.'], 404);
         }
 
-        if ($persona->personeros()->exists()) {
+        if ($afiliado->personeros()->exists()) {
             return response()->json([
-                'mensaje' => 'La persona '.$persona->apellidoNombre().' (DNI: '.$persona->dni.') ya está registrada como personero.',
+                'mensaje' => 'El afiliado '.$afiliado->persona->apellidoNombre().' (DNI: '.$afiliado->persona->dni.') ya está registrado como personero.',
             ], 409);
         }
 
         return response()->json([
-            'persona_id' => $persona->persona_id,
-            'dni' => $persona->dni,
-            'nombre_completo' => $persona->apellidoNombre(),
-            'telefono' => $persona->telefono,
+            'afiliado_id' => $afiliado->afiliado_id,
+            'persona_id' => $afiliado->persona_id,
+            'dni' => $afiliado->persona->dni,
+            'nombre_completo' => $afiliado->persona->apellidoNombre(),
+            'telefono' => $afiliado->persona->telefono,
         ]);
     }
 
     /**
-     * Personas sin registro de personero para el modal (paginado en el servidor).
+     * Afiliados sin registro de personero para el modal (paginado en el servidor).
      */
     public function personas()
     {
-        $query = Persona::query()
+        $query = Afiliado::query()
+            ->with('persona')
             ->whereDoesntHave('personeros')
-            ->select(['persona_id', 'dni', 'nombres', 'primer_apellido', 'segundo_apellido', 'telefono']);
+            ->join('personas', 'personas.persona_id', '=', 'afiliados.persona_id')
+            ->select(['afiliados.afiliado_id', 'afiliados.persona_id', 'personas.dni', 'personas.nombres', 'personas.primer_apellido', 'personas.segundo_apellido', 'personas.telefono']);
 
         return DataTables::eloquent($query)
-            ->addColumn('persona', fn (Persona $persona) => $persona->apellidoNombre())
+            ->addColumn('persona', fn (Afiliado $afiliado) => $afiliado->persona?->apellidoNombre())
             ->toJson();
     }
 
@@ -98,12 +103,14 @@ class PersoneroController extends Controller
     public function store(Request $request)
     {
         $data = $this->validar($request);
-        $this->verificarPersoneroActivo((int) $data['persona_id']);
+        $afiliado = Afiliado::findOrFail((int) $data['afiliado_id']);
+        $this->verificarPersoneroActivo($afiliado);
         $this->verificarMesaDisponible((int) $data['mesa_id']);
 
-        DB::transaction(function () use ($data, $request) {
+        DB::transaction(function () use ($data, $request, $afiliado) {
             $personero = new Personero();
-            $personero->persona_id = $data['persona_id'];
+            $personero->afiliado_id = $afiliado->afiliado_id;
+            $personero->persona_id = $afiliado->persona_id;
             $personero->mesa_id = $data['mesa_id'];
             $personero->autor_id = Auth::id();
             $personero->editor_id = Auth::id();
@@ -129,9 +136,10 @@ class PersoneroController extends Controller
     public function edit(Personero $personero)
     {
         $mesas = $this->mesasOrdenadas();
-        $personaSeleccionada = $personero->persona;
+        $afiliadoSeleccionado = $personero->afiliado ?? Afiliado::with('persona')->find($personero->afiliado_id);
+        $personaSeleccionada = $afiliadoSeleccionado?->persona ?? $personero->persona;
 
-        return view('personeros.edit', compact('personero', 'mesas', 'personaSeleccionada'));
+        return view('personeros.edit', compact('personero', 'mesas', 'afiliadoSeleccionado', 'personaSeleccionada'));
     }
 
     /**
@@ -187,36 +195,36 @@ class PersoneroController extends Controller
      */
     private function validar(Request $request, ?Personero $personero = null)
     {
-        // Al editar, la persona permanece fija: se toma la del registro actual.
+        // Al editar, el afiliado permanece fijo: se toma el del registro actual.
         if ($personero) {
-            $request->merge(['persona_id' => $personero->persona_id]);
+            $request->merge(['afiliado_id' => $personero->afiliado_id ?? $personero->persona_id]);
         }
 
         return $request->validate([
-            'persona_id' => 'required|integer|exists:personas,persona_id',
+            'afiliado_id' => 'required|integer|exists:afiliados,afiliado_id',
             'mesa_id' => 'required|integer|exists:mesas,mesa_id',
         ], [], [
-            'persona_id' => 'persona',
+            'afiliado_id' => 'afiliado',
             'mesa_id' => 'mesa',
         ]);
     }
 
     /**
-     * Verifica que la persona no tenga ya un registro de personero activo.
+     * Verifica que el afiliado no tenga ya un registro de personero activo.
      */
-    private function verificarPersoneroActivo(int $personaId): void
+    private function verificarPersoneroActivo(Afiliado $afiliado): void
     {
-        $personero = Personero::with(['persona', 'mesa'])->where('persona_id', $personaId)->first();
+        $personero = Personero::with(['persona', 'mesa'])->where('afiliado_id', $afiliado->afiliado_id)->first();
 
         if (! $personero) {
             return;
         }
 
-        $persona = $personero->persona?->apellidoNombre() ?? 'La persona';
+        $persona = $personero->persona?->apellidoNombre() ?? 'El afiliado';
         $mesa = $personero->mesa?->etiqueta() ?? 'otra mesa';
 
         throw ValidationException::withMessages([
-            'persona_id' => $persona.' ya está registrada como personero de la '.$mesa.'.',
+            'afiliado_id' => $persona.' ya está registrado como personero de la '.$mesa.'.',
         ])->redirectTo(route('personeros.create'));
     }
 

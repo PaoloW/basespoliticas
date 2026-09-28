@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Afiliado;
 use App\Models\Mesa;
 use App\Models\Partido;
-use App\Models\Persona;
 use App\Models\Personero;
 use App\Models\Voto;
 use Illuminate\Http\Request;
@@ -82,7 +82,7 @@ class VotoController extends Controller
         $conteos = $this->normalizarConteos($request);
 
         DB::transaction(function () use ($data, $conteos, $request) {
-            $this->asegurarPersonero((int) $data['mesa_id'], $request->input('persona_id'));
+            $this->asegurarPersonero((int) $data['mesa_id'], $request->input('afiliado_id'));
             foreach ($conteos as $partidoId => $votos) {
                 $this->guardarConteo((int) $data['mesa_id'], $partidoId, $votos, Auth::id());
             }
@@ -161,36 +161,34 @@ class VotoController extends Controller
     }
 
     /**
-     * Busca una persona por DNI para registrarla como personero de la mesa (AJAX).
+     * Busca un afiliado por DNI para registrarlo como personero de la mesa (AJAX).
+     * Solo afiliados que no son personeros activos.
      */
     public function buscarPersona(Request $request)
     {
         $dni = preg_replace('/\D/', '', (string) $request->query('dni', ''));
 
         if ($dni === '') {
-            return response()->json(['mensaje' => 'Ingrese un DNI para buscar la persona.'], 422);
+            return response()->json(['mensaje' => 'Ingrese un DNI para buscar al afiliado.'], 422);
         }
 
-        $persona = Persona::whereRaw(
-            "REPLACE(REPLACE(REPLACE(TRIM(dni), '.', ''), '-', ''), ' ', '') = ?",
-            [$dni]
-        )->first();
+        $afiliado = Afiliado::with('persona')
+            ->whereDoesntHave('personeros')
+            ->whereHas('persona', fn ($q) => $q->whereRaw(
+                "REPLACE(REPLACE(REPLACE(TRIM(dni), '.', ''), '-', ''), ' ', '') = ?",
+                [$dni]
+            ))->first();
 
-        if (! $persona) {
-            return response()->json(['mensaje' => 'No se encontró ninguna persona con el DNI ingresado.'], 404);
-        }
-
-        if ($persona->personeros()->exists()) {
-            return response()->json([
-                'mensaje' => 'La persona '.$persona->apellidoNombre().' (DNI: '.$persona->dni.') ya está registrada como personero.',
-            ], 409);
+        if (! $afiliado) {
+            return response()->json(['mensaje' => 'No se encontró ningún afiliado disponible con el DNI ingresado. Debe estar afiliado y no ser personero activo.'], 404);
         }
 
         return response()->json([
-            'persona_id' => $persona->persona_id,
-            'dni' => $persona->dni,
-            'nombre_completo' => $persona->apellidoNombre(),
-            'telefono' => $persona->telefono,
+            'afiliado_id' => $afiliado->afiliado_id,
+            'persona_id' => $afiliado->persona_id,
+            'dni' => $afiliado->persona->dni,
+            'nombre_completo' => $afiliado->persona->apellidoNombre(),
+            'telefono' => $afiliado->persona->telefono,
         ]);
     }
 
@@ -218,6 +216,45 @@ class VotoController extends Controller
                 $mesa->loadMissing(['centro']);
 
                 return $mesa->centro?->descripcion ?? '—';
+            })
+            ->toJson();
+    }
+
+    /**
+     * Afiliados disponibles para el modal de votos (paginado en el servidor).
+     * Solo afiliados que no son personeros activos. Búsqueda por dni, nombres, apellidos y base.
+     */
+    public function afiliadosModal()
+    {
+        $query = Afiliado::query()
+            ->whereDoesntHave('personeros')
+            ->join('personas', 'personas.persona_id', '=', 'afiliados.persona_id')
+            ->leftJoin('bases', 'bases.base_id', '=', 'afiliados.base_id')
+            ->select([
+                'afiliados.afiliado_id',
+                'personas.persona_id',
+                'personas.dni',
+                'personas.nombres',
+                'personas.primer_apellido',
+                'personas.segundo_apellido',
+                'bases.descripcion as base_descripcion',
+            ]);
+
+        return \Yajra\DataTables\Facades\DataTables::eloquent($query)
+            ->addColumn('apellidos', fn (Afiliado $afiliado) => trim(($afiliado->primer_apellido ?? '').' '.($afiliado->segundo_apellido ?? '')))
+            ->addColumn('nombre_completo', function (Afiliado $afiliado) {
+                $apellidos = trim(($afiliado->primer_apellido ?? '').' '.($afiliado->segundo_apellido ?? ''));
+                return $apellidos === '' ? ($afiliado->nombres ?? '') : $apellidos.', '.($afiliado->nombres ?? '');
+            })
+            ->addColumn('base', fn (Afiliado $afiliado) => $afiliado->base_descripcion ?? '—')
+            ->filterColumn('apellidos', function ($query, $keyword) {
+                $query->where(function ($q) use ($keyword) {
+                    $q->where('personas.primer_apellido', 'like', "%{$keyword}%")
+                        ->orWhere('personas.segundo_apellido', 'like', "%{$keyword}%");
+                });
+            })
+            ->filterColumn('base', function ($query, $keyword) {
+                $query->where('bases.descripcion', 'like', "%{$keyword}%");
             })
             ->toJson();
     }
@@ -264,6 +301,7 @@ class VotoController extends Controller
             'mesa_numero' => $mesa->descripcion,
             'centro' => $mesa->centro?->descripcion,
             'personero_id' => $personero?->personero_id,
+            'afiliado_id' => $personero?->afiliado_id,
             'persona_id' => $personero?->persona_id,
             'dni' => $personero?->persona?->dni,
             'nombre_completo' => $personero?->persona?->apellidoNombre(),
@@ -341,31 +379,32 @@ class VotoController extends Controller
     {
         return $request->validate([
             'mesa_id' => 'required|integer|exists:mesas,mesa_id',
-            'persona_id' => 'nullable|integer|exists:personas,persona_id',
+            'afiliado_id' => 'nullable|integer|exists:afiliados,afiliado_id',
             'votos' => 'required|array',
             'votos.*' => 'nullable|integer|min:0',
         ], [], [
             'mesa_id' => 'mesa',
-            'persona_id' => 'personero',
+            'afiliado_id' => 'personero',
             'votos' => 'votos',
         ]);
     }
 
     /**
-     * Registra el personero de la mesa si aún no tiene (con la persona elegida por DNI).
+     * Registra el personero de la mesa si aún no tiene (con el afiliado elegido por DNI).
      */
-    private function asegurarPersonero(int $mesaId, mixed $personaId): ?Personero
+    private function asegurarPersonero(int $mesaId, mixed $afiliadoId): ?Personero
     {
         $mesa = Mesa::with('personero')->findOrFail($mesaId);
 
-        if ($mesa->personero || ! $personaId) {
+        if ($mesa->personero || ! $afiliadoId) {
             return $mesa->personero;
         }
 
-        $persona = Persona::findOrFail((int) $personaId);
+        $afiliado = Afiliado::findOrFail((int) $afiliadoId);
 
         $personero = new Personero();
-        $personero->persona_id = $persona->persona_id;
+        $personero->afiliado_id = $afiliado->afiliado_id;
+        $personero->persona_id = $afiliado->persona_id;
         $personero->mesa_id = $mesa->mesa_id;
         $personero->autor_id = Auth::id();
         $personero->editor_id = Auth::id();

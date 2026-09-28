@@ -59,17 +59,21 @@
                 </div>
                 <input type="hidden" name="mesa_id" id="mesa_id"
                        value="{{ old('mesa_id', $mesaSelect?->mesa_id ?? $mesaFija?->mesa_id) }}">
-                <input type="hidden" name="persona_id" id="persona_id"
-                       value="{{ old('persona_id', $personeroSelect?->persona_id) }}">
+                <input type="hidden" name="afiliado_id" id="afiliado_id"
+                       value="{{ old('afiliado_id', $personeroSelect?->afiliado_id) }}">
                 <div id="resultadoPersonero" class="mb-3"></div>
                 <div class="row" id="bloquePersonero" style="display: none;">
                     <div class="col-12 col-md-4 mb-3">
                         <label for="dni_personero" class="form-label"><strong>DNI del personero</strong></label>
                         <div class="input-group">
-                            <input type="text" class="form-control" id="dni_personero" maxlength="20"
+                            <input type="text" class="form-control" id="dni_personero" maxlength="8"
                                    placeholder="DNI para registrar personero" inputmode="numeric">
                             <button type="button" class="btn btn-outline-success" id="btnBuscarPersona" title="Buscar persona por DNI">
                                 <i class="fas fa-user-check"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="btnModalAfiliados"
+                                    data-bs-toggle="tooltip" title="Buscar afiliado en el listado">
+                                <i class="fas fa-search"></i>
                             </button>
                         </div>
                     </div>
@@ -199,6 +203,38 @@
 </div>
 @endif
 
+{{-- Modal de afiliados: buscar por DNI, nombres, apellidos y base --}}
+<div class="modal fade" id="modalAfiliados" tabindex="-1" aria-labelledby="modalAfiliadosLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalAfiliadosLabel">
+                    <i class="fas fa-users me-2"></i>Seleccionar afiliado
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted">
+                    <i class="fas fa-info-circle me-1"></i>Busque por DNI, nombres, apellidos o base. Al elegir se asigna como personero de la mesa.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped table-hover w-100" id="tabla-modal-afiliados">
+                        <thead>
+                            <tr>
+                                <th>DNI</th>
+                                <th>Nombres</th>
+                                <th>Apellidos</th>
+                                <th>Base</th>
+                                <th class="text-end">Acción</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @csrf
 
 @section('footer')
@@ -211,7 +247,7 @@
             const $dni = $('#dni_buscar');
             const $nombre = $('#persona_nombre');
             const $mesaId = $('#mesa_id');
-            const $personaId = $('#persona_id');
+            const $personaId = $('#afiliado_id');
             const $mesa = $('#mesa_personero');
             const $centro = $('#centro_personero');
             const $resultado = $('#resultadoPersonero');
@@ -243,7 +279,7 @@
                 $centro.val(data.centro || '');
                 pintarConteos(data.conteos || {});
                 if (data.tiene_personero) {
-                    $personaId.val(data.persona_id || '');
+                    $personaId.val(data.afiliado_id || '');
                     $bloquePersonero.hide();
                     $personaEncontrada.val('');
                 } else {
@@ -288,21 +324,82 @@
                     if (normalizar($dni.val()) !== '') { temporizador = setTimeout(buscar, 300); }
                     else { pintarResultado('info', 'Ingrese el número de mesa para ver sus datos.'); }
                 });
-                // Busca persona por DNI para asignarla como personero de la mesa.
-                $('#btnBuscarPersona').on('click', function () {
+                // Busca persona por DNI para asignarla como personero (igual que personeros).
+                const establecerAfiliado = function (id, dni, nombre) {
+                    $personaId.val(id);
+                    $dniPersonero.val(dni);
+                    $personaEncontrada.val(nombre + ' (DNI: ' + dni + ')');
+                    $nombre.val(nombre);
+                };
+                const limpiarAfiliado = function () {
+                    $personaId.val('');
+                    $personaEncontrada.val('');
+                };
+                const buscarAfiliadoPorDni = function () {
                     const dni = ($dniPersonero.val() || '').replace(/\D/g, '');
-                    if (dni === '') { $personaEncontrada.val(''); return; }
+                    if (dni.length < 8) {
+                        limpiarAfiliado();
+                        pintarResultado('info', 'Ingrese al menos 8 dígitos del DNI para buscar al afiliado.');
+                        return;
+                    }
                     $.getJSON(urlBuscarPersona, { dni: dni })
                         .done(function (data) {
-                            $personaId.val(data.persona_id);
-                            $personaEncontrada.val(data.nombre_completo + ' (DNI: ' + data.dni + ')');
-                            $nombre.val(data.nombre_completo);
+                            establecerAfiliado(data.afiliado_id, data.dni, data.nombre_completo);
+                            pintarResultado('success', 'Afiliado seleccionado: <strong>' + data.nombre_completo + '</strong> (DNI: ' + data.dni + ').');
                         })
                         .fail(function (xhr) {
-                            $personaId.val(''); $personaEncontrada.val('');
+                            limpiarAfiliado();
                             const mensaje = (xhr.responseJSON && xhr.responseJSON.mensaje) ? xhr.responseJSON.mensaje : 'No fue posible buscar la persona.';
                             pintarResultado('danger', mensaje);
                         });
+                };
+                let temporizadorAfiliado = null;
+                $dniPersonero.on('input', function () {
+                    clearTimeout(temporizadorAfiliado);
+                    const dni = ($dniPersonero.val() || '').replace(/\D/g, '');
+                    if (dni.length === 8) {
+                        temporizadorAfiliado = setTimeout(buscarAfiliadoPorDni, 300);
+                    } else if (dni.length > 0) {
+                        limpiarAfiliado();
+                    }
+                });
+                $('#btnBuscarPersona').on('click', buscarAfiliadoPorDni);
+                $dniPersonero.on('keydown', function (e) {
+                    if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); buscarAfiliadoPorDni(); }
+                });
+                // Modal de afiliados: buscar por dni, nombres, apellidos y base (igual que modal personeros).
+                let tablaAfiliados = null;
+                $('#btnModalAfiliados').on('click', function () {
+                    if (!tablaAfiliados) {
+                        tablaAfiliados = $('#tabla-modal-afiliados').DataTable({
+                            processing: true, serverSide: true,
+                            language: { url: "{{ asset('datatables/spanish.json') }}" },
+                            ajax: { url: "{{ route('votos.afiliadosModal') }}" },
+                            columns: [
+                                { data: 'dni', name: 'dni' },
+                                { data: 'nombres', name: 'nombres' },
+                                { data: 'apellidos', name: 'apellidos' },
+                                { data: 'base', name: 'base' },
+                                { data: null, orderable: false, searchable: false, className: 'text-end',
+                                  render: function (data, type, row) {
+                                      return '<button type="button" class="btn btn-sm btn-primary btn-sel-afiliado"' +
+                                             ' data-persona-id="' + row.afiliado_id + '"' +
+                                             ' data-dni="' + row.dni + '"' +
+                                             ' data-nombre="' + row.nombre_completo + '">' +
+                                             '<i class="fas fa-check me-1"></i>Seleccionar</button>';
+                                  } },
+                            ],
+                            order: [[1, 'asc']], pageLength: 10,
+                            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, 'Todos']],
+                        });
+                    }
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAfiliados')).show();
+                    setTimeout(function () { tablaAfiliados.columns.adjust(); }, 300);
+                });
+                $(document).on('click', '.btn-sel-afiliado', function () {
+                    establecerAfiliado($(this).data('persona-id'), $(this).data('dni'), $(this).data('nombre'));
+                    pintarResultado('success', 'Afiliado seleccionado: <strong>' + $(this).data('nombre') + '</strong>.');
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAfiliados')).hide();
                 });
                 $dni.on('keydown', function (e) {
                     if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); buscar(); }

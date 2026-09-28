@@ -52,7 +52,7 @@
                         </div>
                     </div>
                 </div>
-                <input type="hidden" name="persona_id" id="persona_id" value="{{ old('persona_id', $personero->persona_id) }}">
+                <input type="hidden" name="afiliado_id" id="afiliado_id" value="{{ old('afiliado_id', $personero->afiliado_id ?? $afiliadoSeleccionado?->afiliado_id ?? '') }}">
                 <div id="resultadoPersona" class="mb-3"></div>
 
 <div class="row">
@@ -164,7 +164,7 @@
 
             const $resultadoPersona = $('#resultadoPersona');
             const $dni = $('#dni_buscar');
-            const $personaId = $('#persona_id');
+            const $personaId = $('#afiliado_id');
             const $personaNombre = $('#persona_nombre');
 
             const pintar = function (tipo, html) {
@@ -222,8 +222,8 @@
                     $.getJSON('{{ route('personeros.buscarPersona') }}', { dni: dni })
                         .done(function (data) {
                             ocultarBtnRegistrar();
-                            establecerPersona(data.persona_id, data.dni, data.nombre_completo);
-                            pintar('success', 'Persona seleccionada: <strong>' + data.nombre_completo + '</strong> (DNI: ' + data.dni + ').');
+                            establecerPersona(data.afiliado_id, data.dni, data.nombre_completo);
+                            pintar('success', 'Afiliado seleccionado: <strong>' + data.nombre_completo + '</strong> (DNI: ' + data.dni + ').');
                         })
                         .fail(function (xhr) {
                             limpiarPersona();
@@ -275,7 +275,7 @@
                             { data: null, orderable: false, searchable: false, className: 'text-end',
                               render: function (data, type, row) {
                                   return '<button type="button" class="btn btn-sm btn-primary btn-seleccionar-persona"' +
-                                         ' data-persona-id="' + row.persona_id + '"' +
+                                         ' data-persona-id="' + row.afiliado_id + '"' +
                                          ' data-dni="' + row.dni + '"' +
                                          ' data-nombre="' + row.persona + '">' +
                                          '<i class="fas fa-check me-1"></i>Seleccionar</button>';
