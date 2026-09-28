@@ -41,9 +41,12 @@ return new class extends Migration
         }
 
         // 4. Un personero vigente por persona.
-        Schema::table('personeros', function (Blueprint $table) {
-            $table->unique(['persona_id', 'activo'], 'personeros_persona_activo_unique');
-        });
+        try {
+            Schema::table('personeros', function (Blueprint $table) {
+                $table->unique(['persona_id', 'activo'], 'personeros_persona_activo_unique');
+            });
+        } catch (\Throwable $e) {
+        }
     }
 
     /**

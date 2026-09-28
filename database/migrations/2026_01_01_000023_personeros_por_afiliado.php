@@ -12,9 +12,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('personeros', function (Blueprint $table) {
-            $table->unsignedBigInteger('afiliado_id')->nullable()->after('personero_id');
-        });
+        if (!Schema::hasColumn('personeros', 'afiliado_id')) {
+            Schema::table('personeros', function (Blueprint $table) {
+                $table->unsignedBigInteger('afiliado_id')->nullable()->after('personero_id');
+            });
+        }
 
         // Vincula cada personero con la afiliación activa de su persona (portable MySQL/SQLite).
         DB::statement('UPDATE personeros SET afiliado_id = (SELECT a.afiliado_id FROM afiliados a WHERE a.persona_id = personeros.persona_id AND a.deleted_at IS NULL LIMIT 1) WHERE afiliado_id IS NULL');
@@ -26,10 +28,13 @@ return new class extends Migration
         } catch (\Throwable $e) {
         }
 
-        Schema::table('personeros', function (Blueprint $table) {
-            $table->foreign('afiliado_id')->references('afiliado_id')->on('afiliados')->restrictOnDelete();
-            $table->unique(['afiliado_id', 'activo'], 'personeros_afiliado_activo_unique');
-        });
+        try {
+            Schema::table('personeros', function (Blueprint $table) {
+                $table->foreign('afiliado_id')->references('afiliado_id')->on('afiliados')->restrictOnDelete();
+                $table->unique(['afiliado_id', 'activo'], 'personeros_afiliado_activo_unique');
+            });
+        } catch (\Throwable $e) {
+        }
     }
 
     public function down(): void
