@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Mesa extends Model
@@ -75,6 +76,22 @@ class Mesa extends Model
         return $this->hasMany(Personero::class, 'mesa_id', 'mesa_id');
     }
 
+    /**
+     * El personero (apoderado) asignado a la mesa.
+     */
+    public function personero(): HasOne
+    {
+        return $this->hasOne(Personero::class, 'mesa_id', 'mesa_id');
+    }
+
+    /**
+     * Los conteos de votos de la mesa (uno por partido).
+     */
+    public function votos(): HasMany
+    {
+        return $this->hasMany(Voto::class, 'mesa_id', 'mesa_id');
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Operaciones de negocio
@@ -87,6 +104,14 @@ class Mesa extends Model
     public function totalPersoneros(): int
     {
         return $this->personeros()->count();
+    }
+
+    /**
+     * Total de votos registrados en la mesa.
+     */
+    public function totalVotos(): int
+    {
+        return (int) $this->votos()->sum('votos');
     }
 
     /**

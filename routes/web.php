@@ -67,15 +67,20 @@ Route::get('personeros/personas', [PersoneroController::class, 'personas'])
     ->middleware('acceso');
 Route::resource('personeros', PersoneroController::class)->except(['show'])->middleware('auth')->middleware('acceso');
 
-// Conteo de votos de un personero (AJAX) antes del resto de rutas.
-Route::get('votos/personero/{personero}/conteo', [VotoController::class, 'conteo'])
+// Conteo de votos de una mesa (AJAX) antes del resto de rutas.
+Route::get('votos/mesa/{mesa}/conteo', [VotoController::class, 'conteo'])
     ->name('votos.conteo')
     ->middleware('auth')
     ->middleware('acceso');
 
-// Búsqueda de personero por DNI y listado paginado para el modal (edición admin).
+// Búsqueda de mesa con su personero y conteos, búsqueda de persona por DNI
+// (para registrar personero al vuelo) y listado paginado de mesas para el modal.
 Route::get('votos/buscar-personero', [VotoController::class, 'buscarPersoneroPorDni'])
     ->name('votos.buscarPersonero')
+    ->middleware('auth')
+    ->middleware('acceso');
+Route::get('votos/buscar-persona', [VotoController::class, 'buscarPersona'])
+    ->name('votos.buscarPersona')
     ->middleware('auth')
     ->middleware('acceso');
 Route::get('votos/personeros-modal', [VotoController::class, 'personerosModal'])

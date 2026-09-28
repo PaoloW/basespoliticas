@@ -34,6 +34,7 @@ class Partido extends Model
         'partido_id',
         'nombre',
         'logo',
+        'orden',
         'autor_id',
         'editor_id',
     ];

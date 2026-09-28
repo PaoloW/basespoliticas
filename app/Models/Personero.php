@@ -75,11 +75,11 @@ class Personero extends Model
     }
 
     /**
-     * Los conteos de votos registrados por el personero (uno por partido).
+     * Los conteos de votos de su mesa (uno por partido).
      */
     public function votos(): HasMany
     {
-        return $this->hasMany(Voto::class, 'personero_id', 'personero_id');
+        return $this->hasMany(Voto::class, 'mesa_id', 'mesa_id');
     }
 
     /*

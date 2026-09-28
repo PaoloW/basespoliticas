@@ -14,7 +14,7 @@ class PartidoController extends Controller
      */
     public function index()
     {
-        $partidos = Partido::orderBy('nombre')
+        $partidos = Partido::orderBy('orden')->orderBy('nombre')
             ->get();
 
         return view('partidos.index', compact('partidos'));
@@ -26,6 +26,7 @@ class PartidoController extends Controller
     public function create()
     {
         $partido = new Partido();
+        $partido->orden = (int) (Partido::max('orden') ?? 0) + 1;
 
         return view('partidos.create', compact('partido'));
     }
@@ -41,6 +42,7 @@ class PartidoController extends Controller
         DB::transaction(function () use ($data, &$partido) {
             $partido = new Partido();
             $partido->nombre = $data['nombre'];
+            $partido->orden = $data['orden'];
             $partido->autor_id = Auth::id();
             $partido->editor_id = Auth::id();
             $partido->save();
@@ -65,10 +67,11 @@ class PartidoController extends Controller
      */
     public function update(Request $request, Partido $partido)
     {
-        $data = $this->validar($request);
+        $data = $this->validar($request, $partido);
 
         DB::transaction(function () use ($partido, $data) {
             $partido->nombre = $data['nombre'];
+            $partido->orden = $data['orden'];
             $partido->editor_id = Auth::id();
             $partido->save();
         });
@@ -100,16 +103,21 @@ class PartidoController extends Controller
     /**
      * Reglas de validación al crear o actualizar un partido.
      */
-    private function validar(Request $request)
+    private function validar(Request $request, ?Partido $partido = null)
     {
+        $ignorar = $partido?->partido_id ? ','.$partido->partido_id.',partido_id' : '';
+
         return $request->validate([
             'nombre' => 'required|string|max:255',
+            'orden' => 'required|integer|min:1|unique:partidos,orden'.$ignorar,
             'logo' => 'nullable|image|max:2048',
         ], [
+            'orden.unique' => 'El orden ingresado ya está en uso por otro partido.',
             'logo.image' => 'El logo debe ser una imagen.',
             'logo.max' => 'El logo no puede superar los 2 MB.',
         ], [
             'nombre' => 'nombre del partido',
+            'orden' => 'orden',
             'logo' => 'logo',
         ]);
     }

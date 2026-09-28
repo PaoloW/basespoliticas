@@ -19,6 +19,12 @@
             </div>
             <div class="card-body">
                 <div class="row">
+                    <div class="col-12 col-md-6 mb-3">
+                        <label for="orden" class="form-label"><strong>Orden</strong></label>
+                        <input type="number" class="form-control" id="orden" name="orden"
+                               value="{{ old('orden', $partido->orden) }}" min="1" step="1" required>
+                        <div class="form-text">Orden de aparición en el registro de votos. No se puede repetir.</div>
+                    </div>
                     <div class="col-12 mb-3">
                         <label for="nombre" class="form-label"><strong>Nombre del partido</strong></label>
                         <input type="text" class="form-control" id="nombre" name="nombre"

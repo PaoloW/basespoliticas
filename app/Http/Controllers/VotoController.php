@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Mesa;
 use App\Models\Partido;
+use App\Models\Persona;
 use App\Models\Personero;
 use App\Models\Voto;
 use Illuminate\Http\Request;
@@ -12,38 +14,38 @@ use Illuminate\Support\Facades\DB;
 class VotoController extends Controller
 {
     /**
-     * Reporte de conteos: personeros que registraron votos y su total.
+     * Reporte de conteos: mesas con votos registrados y su total.
      */
     public function index()
     {
         $personeroActual = $this->personeroAutenticado();
 
-        $consulta = Personero::with(['persona', 'mesa.centro'])
+        $consulta = Mesa::with(['centro', 'personero.persona'])
             ->withCount('votos')
             ->withSum('votos as total_votos', 'votos')
             ->withMax('votos as ultimo_conteo', 'updated_at')
             ->whereHas('votos');
 
-        // Un personero solo ve su propio conteo; el administrador ve todos.
+        // Un personero solo ve su propia mesa; el administrador ve todas.
         if ($personeroActual && ! Auth::user()?->esAdmin()) {
-            $consulta->where('personero_id', $personeroActual->personero_id);
+            $consulta->where('mesa_id', $personeroActual->mesa_id);
         }
 
-        $personeros = $consulta->get()
-            ->sortByDesc(fn (Personero $personero) => $personero->total_votos)
+        $mesas = $consulta->get()
+            ->sortByDesc(fn (Mesa $mesa) => $mesa->total_votos)
             ->values();
 
-        $totalVotos = (int) $personeros->sum('total_votos');
+        $totalVotos = (int) $mesas->sum('total_votos');
         $totalPartidos = (int) Voto::distinct()->count('partido_id');
 
-        return view('votos.index', compact('personeros', 'totalVotos', 'totalPartidos'));
+        return view('votos.index', compact('mesas', 'totalVotos', 'totalPartidos'));
     }
 
     /**
      * Formulario directo de registro del conteo de votos.
      *
-     * El personero se obtiene del usuario activo (a través de su persona_id);
-     * el administrador puede elegir otro personero desde el selector.
+     * Se elige la mesa de todas las registradas; si tiene personero y votos
+     * se precargan, si no se permite registrar el personero (por DNI) y el conteo.
      */
     public function registrar(Request $request)
     {
@@ -52,36 +54,37 @@ class VotoController extends Controller
         $personeroActual = $this->personeroAutenticado();
         $esAdmin = (bool) Auth::user()?->esAdmin();
 
-        // Personero del formulario: el del usuario activo o el recibido por parámetro.
-        $personeroSel = $personeroActual
-            ?? ($request->filled('personero_id') ? Personero::with(['persona', 'mesa'])->find($request->input('personero_id')) : null);
+        // Mesa del formulario: la del personero activo o la recibida por parámetro.
+        $mesaSel = $personeroActual?->mesa()->with(['centro', 'personero.persona'])->first()
+            ?? ($request->filled('mesa_id') ? Mesa::with(['centro', 'personero.persona'])->find($request->input('mesa_id')) : null);
 
-        // Solo el administrador puede registrar el conteo de otro personero.
-        $personeros = ($personeroActual || ! $esAdmin) ? collect() : $this->personerosOrdenados();
-        $conteos = $this->conteosDe($personeroSel?->personero_id);
+        $personeroSel = $mesaSel?->personero;
+        $mesas = $this->mesasOrdenadas();
+        $conteos = $this->conteosDe($mesaSel?->mesa_id);
         $personaSeleccionada = $personeroSel?->persona ?? $personeroActual?->persona;
 
-        return view('votos.registrar', compact('voto', 'partidos', 'personeros', 'personeroActual', 'personeroSel', 'conteos', 'personaSeleccionada'));
+        return view('votos.registrar', compact('voto', 'partidos', 'mesas', 'mesaSel', 'personeroActual', 'personeroSel', 'conteos', 'personaSeleccionada', 'esAdmin'));
     }
 
     /**
-     * Guarda el conteo por cada partido del personero.
+     * Guarda el conteo por cada partido de la mesa.
      */
     public function guardar(Request $request)
     {
         $personeroActual = $this->personeroAutenticado();
 
-        // Un personero solo registra su propio conteo.
+        // Un personero solo registra el conteo de su mesa.
         if ($personeroActual) {
-            $request->merge(['personero_id' => $personeroActual->personero_id]);
+            $request->merge(['mesa_id' => $personeroActual->mesa_id]);
         }
 
         $data = $this->validar($request);
         $conteos = $this->normalizarConteos($request);
 
-        DB::transaction(function () use ($data, $conteos) {
+        DB::transaction(function () use ($data, $conteos, $request) {
+            $this->asegurarPersonero((int) $data['mesa_id'], $request->input('persona_id'));
             foreach ($conteos as $partidoId => $votos) {
-                $this->guardarConteo((int) $data['personero_id'], $partidoId, $votos, Auth::id());
+                $this->guardarConteo((int) $data['mesa_id'], $partidoId, $votos, Auth::id());
             }
         });
 
@@ -89,30 +92,35 @@ class VotoController extends Controller
     }
 
     /**
-     * Formulario para actualizar el conteo completo de un personero.
+     * Formulario para actualizar el conteo completo de una mesa.
      */
     public function edit(Voto $voto)
     {
-        $personero = $voto->personero()->with(['persona', 'mesa.centro'])->first();
+        $mesa = $voto->mesa()->with(['centro', 'personero.persona'])->first();
         $partidos = $this->partidosOrdenados();
-        $conteos = $this->conteosDe($voto->personero_id);
+        $conteos = $this->conteosDe($voto->mesa_id);
+        $personero = $mesa?->personero;
         $personaSeleccionada = $personero?->persona;
-        $personeros = collect();
+        $mesas = collect();
+        $mesaSel = $mesa;
+        $personeroSel = $personero;
+        $esAdmin = (bool) Auth::user()?->esAdmin();
 
-        return view('votos.edit', compact('voto', 'personero', 'partidos', 'conteos', 'personaSeleccionada', 'personeros'));
+        return view('votos.edit', compact('voto', 'mesa', 'mesaSel', 'personero', 'personeroSel', 'partidos', 'conteos', 'personaSeleccionada', 'mesas', 'esAdmin'));
     }
 
     /**
-     * Actualiza el conteo por cada partido del personero elegido en el formulario.
+     * Actualiza el conteo por cada partido de la mesa elegida en el formulario.
      */
     public function update(Request $request, Voto $voto)
     {
         $data = $this->validar($request);
         $conteos = $this->normalizarConteos($request);
 
-        DB::transaction(function () use ($data, $conteos) {
+        DB::transaction(function () use ($data, $conteos, $request) {
+            $this->asegurarPersonero((int) $data['mesa_id'], $request->input('persona_id'));
             foreach ($conteos as $partidoId => $votos) {
-                $this->guardarConteo((int) $data['personero_id'], $partidoId, $votos, Auth::id());
+                $this->guardarConteo((int) $data['mesa_id'], $partidoId, $votos, Auth::id());
             }
         });
 
@@ -120,17 +128,50 @@ class VotoController extends Controller
     }
 
     /**
-     * Busca un personero por el DNI de su persona (AJAX).
+     * Detalle de una mesa con su personero y conteos (AJAX): se busca por
+     * mesa_id o por número de mesa.
      */
     public function buscarPersoneroPorDni(Request $request)
+    {
+        $mesa = null;
+
+        if ($request->filled('mesa_id')) {
+            $mesa = Mesa::with(['centro', 'personero.persona'])->find($request->input('mesa_id'));
+        } elseif ($request->filled('personero_id')) {
+            // Compatibilidad: antes se buscaba por personero.
+            $personero = Personero::with(['mesa.centro', 'persona'])->find($request->input('personero_id'));
+            $mesa = $personero?->mesa()->with(['centro', 'personero.persona'])->first();
+        } else {
+            $mesaNumero = preg_replace('/\D/', '', (string) $request->query('mesa', $request->query('dni', '')));
+
+            if ($mesaNumero === '') {
+                return response()->json(['mensaje' => 'Ingrese un número de mesa para buscar.'], 422);
+            }
+
+            $mesa = Mesa::with(['centro', 'personero.persona'])
+                ->where('descripcion', $mesaNumero)
+                ->first();
+        }
+
+        if (! $mesa) {
+            return response()->json(['mensaje' => 'No se encontró la mesa buscada.'], 404);
+        }
+
+        return response()->json($this->detalleMesa($mesa));
+    }
+
+    /**
+     * Busca una persona por DNI para registrarla como personero de la mesa (AJAX).
+     */
+    public function buscarPersona(Request $request)
     {
         $dni = preg_replace('/\D/', '', (string) $request->query('dni', ''));
 
         if ($dni === '') {
-            return response()->json(['mensaje' => 'Ingrese un DNI para buscar el personero.'], 422);
+            return response()->json(['mensaje' => 'Ingrese un DNI para buscar la persona.'], 422);
         }
 
-        $persona = \App\Models\Persona::whereRaw(
+        $persona = Persona::whereRaw(
             "REPLACE(REPLACE(REPLACE(TRIM(dni), '.', ''), '-', ''), ' ', '') = ?",
             [$dni]
         )->first();
@@ -139,54 +180,56 @@ class VotoController extends Controller
             return response()->json(['mensaje' => 'No se encontró ninguna persona con el DNI ingresado.'], 404);
         }
 
-        $personero = Personero::with(['persona', 'mesa.centro'])->where('persona_id', $persona->persona_id)->first();
-
-        if (! $personero) {
-            return response()->json(['mensaje' => 'La persona encontrada aún no está registrada como personero.'], 404);
+        if ($persona->personeros()->exists()) {
+            return response()->json([
+                'mensaje' => 'La persona '.$persona->apellidoNombre().' (DNI: '.$persona->dni.') ya está registrada como personero.',
+            ], 409);
         }
 
         return response()->json([
-            'personero_id' => $personero->personero_id,
-            'dni' => $personero->persona?->dni,
-            'nombre_completo' => $personero->persona?->apellidoNombre(),
-            'mesa' => $personero->mesa?->etiqueta(),
-            'conteos' => $this->conteosDe($personero->personero_id),
+            'persona_id' => $persona->persona_id,
+            'dni' => $persona->dni,
+            'nombre_completo' => $persona->apellidoNombre(),
+            'telefono' => $persona->telefono,
         ]);
     }
 
     /**
-     * Personeros registrados para el modal (paginado en el servidor).
+     * Mesas registradas para el modal (paginado en el servidor).
      */
     public function personerosModal()
     {
-        $query = Personero::query()
+        $query = Mesa::query()
+            ->leftJoin('centros', 'centros.centro_id', '=', 'mesas.centro_id')
+            ->leftJoin('personeros', 'personeros.mesa_id', '=', 'mesas.mesa_id')
             ->leftJoin('personas', 'personas.persona_id', '=', 'personeros.persona_id')
-            ->leftJoin('mesas', 'mesas.mesa_id', '=', 'personeros.mesa_id')
-            ->select(['personeros.personero_id', 'personas.dni']);
+            ->select(['mesas.mesa_id', 'mesas.descripcion', 'personas.dni']);
 
         return \Yajra\DataTables\Facades\DataTables::eloquent($query)
-            ->addColumn('persona', function (Personero $personero) {
-                $personero->loadMissing(['persona', 'mesa']);
+            ->addColumn('persona', function (Mesa $mesa) {
+                $mesa->loadMissing(['personero.persona']);
 
-                return $personero->persona?->apellidoNombre() ?? '—';
+                return $mesa->personero?->persona?->apellidoNombre() ?? '— Sin personero —';
             })
-            ->addColumn('mesa', function (Personero $personero) {
-                $personero->loadMissing(['persona', 'mesa']);
+            ->addColumn('mesa', function (Mesa $mesa) {
+                return $mesa->etiqueta();
+            })
+            ->addColumn('centro', function (Mesa $mesa) {
+                $mesa->loadMissing(['centro']);
 
-                return $personero->mesa?->etiqueta() ?? '—';
+                return $mesa->centro?->descripcion ?? '—';
             })
             ->toJson();
     }
 
     /**
-     * Devuelve el conteo registrado de un personero (JSON) para precargar el formulario.
+     * Devuelve el conteo registrado de una mesa (JSON) para precargar el formulario.
      */
-    public function conteo(Personero $personero)
+    public function conteo(Mesa $mesa)
     {
-        return response()->json([
-            'personero_id' => $personero->personero_id,
-            'conteos' => $this->conteosDe($personero->personero_id),
-        ]);
+        $mesa->loadMissing(['personero.persona', 'centro']);
+
+        return response()->json($this->detalleMesa($mesa));
     }
 
     /**
@@ -209,22 +252,40 @@ class VotoController extends Controller
     */
 
     /**
-     * Partidos ordenados por nombre, para la tabla del formulario.
+     * Detalle de la mesa para el formulario de conteo.
      */
-    private function partidosOrdenados()
+    private function detalleMesa(Mesa $mesa): array
     {
-        return Partido::orderBy('nombre')->get();
+        $personero = $mesa->personero;
+
+        return [
+            'mesa_id' => $mesa->mesa_id,
+            'mesa' => $mesa->etiqueta(),
+            'mesa_numero' => $mesa->descripcion,
+            'centro' => $mesa->centro?->descripcion,
+            'personero_id' => $personero?->personero_id,
+            'persona_id' => $personero?->persona_id,
+            'dni' => $personero?->persona?->dni,
+            'nombre_completo' => $personero?->persona?->apellidoNombre(),
+            'tiene_personero' => (bool) $personero,
+            'conteos' => $this->conteosDe($mesa->mesa_id),
+        ];
     }
 
     /**
-     * Personeros ordenados por apellidos y nombres, para el select del formulario.
+     * Partidos ordenados por orden y nombre, para la tabla del formulario.
      */
-    private function personerosOrdenados()
+    private function partidosOrdenados()
     {
-        return Personero::with('persona')
-            ->get()
-            ->sortBy(fn (Personero $personero) => $personero->persona?->apellidoNombre())
-            ->values();
+        return Partido::orderBy('orden')->orderBy('nombre')->get();
+    }
+
+    /**
+     * Mesas ordenadas por número, para el selector del formulario.
+     */
+    private function mesasOrdenadas()
+    {
+        return Mesa::with(['centro', 'personero.persona'])->orderBy('descripcion')->get();
     }
 
     /**
@@ -242,15 +303,15 @@ class VotoController extends Controller
     }
 
     /**
-     * Conteos registrados de un personero, indexados por partido.
+     * Conteos registrados de una mesa, indexados por partido.
      */
-    private function conteosDe(?int $personeroId): array
+    private function conteosDe(?int $mesaId): array
     {
-        if (! $personeroId) {
+        if (! $mesaId) {
             return [];
         }
 
-        return Voto::where('personero_id', $personeroId)
+        return Voto::where('mesa_id', $mesaId)
             ->pluck('votos', 'partido_id')
             ->toArray();
     }
@@ -274,27 +335,52 @@ class VotoController extends Controller
     }
 
     /**
-     * Reglas de validación del personero y de los votos por partido.
+     * Reglas de validación de la mesa y de los votos por partido.
      */
     private function validar(Request $request)
     {
         return $request->validate([
-            'personero_id' => 'required|integer|exists:personeros,personero_id',
+            'mesa_id' => 'required|integer|exists:mesas,mesa_id',
+            'persona_id' => 'nullable|integer|exists:personas,persona_id',
             'votos' => 'required|array',
             'votos.*' => 'nullable|integer|min:0',
         ], [], [
-            'personero_id' => 'personero',
+            'mesa_id' => 'mesa',
+            'persona_id' => 'personero',
             'votos' => 'votos',
         ]);
     }
 
     /**
-     * Crea o actualiza el conteo de un partido para el personero.
+     * Registra el personero de la mesa si aún no tiene (con la persona elegida por DNI).
      */
-    private function guardarConteo(int $personeroId, int $partidoId, int $votos, ?int $usuarioId): void
+    private function asegurarPersonero(int $mesaId, mixed $personaId): ?Personero
+    {
+        $mesa = Mesa::with('personero')->findOrFail($mesaId);
+
+        if ($mesa->personero || ! $personaId) {
+            return $mesa->personero;
+        }
+
+        $persona = Persona::findOrFail((int) $personaId);
+
+        $personero = new Personero();
+        $personero->persona_id = $persona->persona_id;
+        $personero->mesa_id = $mesa->mesa_id;
+        $personero->autor_id = Auth::id();
+        $personero->editor_id = Auth::id();
+        $personero->save();
+
+        return $personero;
+    }
+
+    /**
+     * Crea o actualiza el conteo de un partido para la mesa.
+     */
+    private function guardarConteo(int $mesaId, int $partidoId, int $votos, ?int $usuarioId): void
     {
         $registro = Voto::withTrashed()
-            ->where('personero_id', $personeroId)
+            ->where('mesa_id', $mesaId)
             ->where('partido_id', $partidoId)
             ->first();
 
@@ -310,7 +396,7 @@ class VotoController extends Controller
         }
 
         $registro = new Voto();
-        $registro->personero_id = $personeroId;
+        $registro->mesa_id = $mesaId;
         $registro->partido_id = $partidoId;
         $registro->votos = $votos;
         $registro->autor_id = $usuarioId;

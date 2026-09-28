@@ -32,8 +32,8 @@
         <div class="card text-white bg-primary h-100">
             <div class="card-body d-flex align-items-center justify-content-between">
                 <div>
-                    <div class="text-uppercase small opacity-75">Personeros con conteo</div>
-                    <div class="fw-bold fs-4">{{ $personeros->count() }}</div>
+                    <div class="text-uppercase small opacity-75">Mesas con conteo</div>
+                    <div class="fw-bold fs-4">{{ $mesas->count() }}</div>
                 </div>
                 <i class="fas fa-user-check fa-2x opacity-50"></i>
             </div>
@@ -65,7 +65,7 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
-        <div><i class="fas fa-chart-line me-2"></i>Conteos registrados por personero</div>
+        <div><i class="fas fa-chart-line me-2"></i>Conteos registrados por mesa</div>
         <a class="btn btn-sm btn-primary" href="{{ route('votos.registrar') }}">
             <i class="fas fa-plus me-1"></i>Registrar conteo
         </a>
@@ -76,10 +76,10 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Personero</th>
-                        <th>DNI</th>
                         <th>Mesa</th>
                         <th>Centro de votación</th>
+                        <th>Personero</th>
+                        <th>DNI</th>
                         <th class="text-center">Partidos</th>
                         <th class="text-center">Total de votos</th>
                         <th class="text-center">Último conteo</th>
@@ -87,21 +87,21 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ( $personeros as $personero )
+                    @forelse ( $mesas as $mesa )
                     <tr>
                         <td>{{ $loop->iteration }}</td>
-                        <td>{{ $personero->persona?->apellidoNombre() ?? '—' }}</td>
-                        <td>{{ $personero->persona?->dni ?? '—' }}</td>
-                        <td>{{ $personero->mesa?->etiqueta() ?? '—' }}</td>
-                        <td>{{ $personero->mesa?->centro?->descripcion ?? '—' }}</td>
-                        <td class="text-center">{{ $personero->votos_count }}</td>
-                        <td class="text-center fw-bold">{{ $personero->total_votos ?? 0 }}</td>
+                        <td>{{ $mesa->etiqueta() }}</td>
+                        <td>{{ $mesa->centro?->descripcion ?? '—' }}</td>
+                        <td>{{ $mesa->personero?->persona?->apellidoNombre() ?? '— Sin personero —' }}</td>
+                        <td>{{ $mesa->personero?->persona?->dni ?? '—' }}</td>
+                        <td class="text-center">{{ $mesa->votos_count }}</td>
+                        <td class="text-center fw-bold">{{ $mesa->total_votos ?? 0 }}</td>
                         <td class="text-center text-nowrap">
-                            {{ $personero->ultimo_conteo ? \Illuminate\Support\Carbon::parse($personero->ultimo_conteo)->format('d/m/Y H:i') : '—' }}
+                            {{ $mesa->ultimo_conteo ? \Illuminate\Support\Carbon::parse($mesa->ultimo_conteo)->format('d/m/Y H:i') : '—' }}
                         </td>
                         <td class="text-end text-nowrap">
                             <a class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Revisar / editar conteo"
-                               href="{{ route('votos.registrar', ['personero_id' => $personero->personero_id]) }}"><i class="fas fa-edit"></i></a>
+                               href="{{ route('votos.registrar', ['mesa_id' => $mesa->mesa_id]) }}"><i class="fas fa-edit"></i></a>
                         </td>
                     </tr>
                     @empty

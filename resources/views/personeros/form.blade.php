@@ -93,10 +93,17 @@
                     <p class="small text-muted mb-1">Registrado: {{ $personero->created_at?->format('d/m/Y H:i') }}</p>
                     <p class="small text-muted mb-3">Última edición: {{ $personero->updated_at?->format('d/m/Y H:i') }}</p>
                 @else
-                    <div class="alert alert-info py-2">
-                        <i class="fas fa-info-circle me-1"></i>Al guardar se creará la cuenta del personero usando su
-                        <strong>DNI como usuario y contraseña</strong>, con acceso por defecto a
-                        <strong>Gestión de votos</strong>.
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" value="1" id="crear_usuario" name="crear_usuario"
+                               @checked(old('crear_usuario', false))>
+                        <label class="form-check-label" for="crear_usuario">
+                            <strong>Crear usuario al personero</strong>
+                        </label>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>Si se marca, se crea su cuenta usando el
+                            <strong>DNI como usuario y contraseña</strong>, con acceso a
+                            <strong>Gestión de votos</strong>. Por defecto está sin marcar.
+                        </div>
                     </div>
                 @endif
                 <div class="d-grid gap-2">

@@ -101,7 +101,7 @@ class PersoneroController extends Controller
         $this->verificarPersoneroActivo((int) $data['persona_id']);
         $this->verificarMesaDisponible((int) $data['mesa_id']);
 
-        DB::transaction(function () use ($data) {
+        DB::transaction(function () use ($data, $request) {
             $personero = new Personero();
             $personero->persona_id = $data['persona_id'];
             $personero->mesa_id = $data['mesa_id'];
@@ -109,12 +109,18 @@ class PersoneroController extends Controller
             $personero->editor_id = Auth::id();
             $personero->save();
 
-            // Cada personero cuenta con su propia cuenta: DNI como usuario y contraseña.
-            $this->crearUsuario($personero);
+            // Solo se crea la cuenta si el check está marcado.
+            if ($request->boolean('crear_usuario')) {
+                $this->crearUsuario($personero);
+            }
         });
 
-        return redirect()->route('personeros.index')
-            ->with('success', 'Personero registrado correctamente. Se creó su usuario con el DNI como usuario y contraseña.');
+        $mensaje = 'Personero registrado correctamente.';
+        if ($request->boolean('crear_usuario')) {
+            $mensaje .= ' Se creó su usuario con el DNI como usuario y contraseña.';
+        }
+
+        return redirect()->route('personeros.index')->with('success', $mensaje);
     }
 
     /**

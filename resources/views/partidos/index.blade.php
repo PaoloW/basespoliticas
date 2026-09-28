@@ -39,7 +39,8 @@
             <table class="table table-sm table-striped table-hover w-100" id="tabla-partidos">
                 <thead>
                     <tr>
-                        <th>#</th>
+                        <th style="width: 70px;" class="text-center">Orden</th>
+                        <th style="width: 60px;" class="text-center">Logo</th>
                         <th>Nombre del partido</th>
                         <th class="text-end">Acciones</th>
                     </tr>
@@ -47,7 +48,14 @@
                 <tbody>
                     @forelse ( $partidos as $partido )
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
+                        <td class="text-center fw-bold">{{ $partido->orden ?? '—' }}</td>
+                        <td class="text-center">
+                            @if (!empty($partido->logo))
+                                <img src="{{ asset($partido->logo) }}" alt="Logo" style="height: 38px; width: auto; max-width: 60px; object-fit: contain;">
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
+                        </td>
                         <td>{{ $partido->nombre }}</td>
                         <td class="text-end text-nowrap">
                             <a class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Editar"
@@ -79,7 +87,7 @@
                 extend: extend,
                 text: '<i class="' + icono + ' me-1"></i>' + texto,
                 className: 'btn btn-sm ' + clase,
-                exportOptions: { columns: [0, 1] },
+                exportOptions: { columns: [0, 1, 2] },
             });
 
             $('#tabla-partidos').DataTable({
