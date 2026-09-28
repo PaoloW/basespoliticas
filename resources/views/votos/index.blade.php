@@ -100,8 +100,9 @@
                             {{ $mesa->ultimo_conteo ? \Illuminate\Support\Carbon::parse($mesa->ultimo_conteo)->format('d/m/Y H:i') : '—' }}
                         </td>
                         <td class="text-end text-nowrap">
+                            {{-- Edición: la mesa queda bloqueada, solo se añade personero (si falta) y se editan votos. --}}
                             <a class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Revisar / editar conteo"
-                               href="{{ route('votos.registrar', ['mesa_id' => $mesa->mesa_id]) }}"><i class="fas fa-edit"></i></a>
+                               href="{{ route('votos.edit', ['voto' => $mesa->voto_id]) }}"><i class="fas fa-edit"></i></a>
                         </td>
                     </tr>
                     @empty

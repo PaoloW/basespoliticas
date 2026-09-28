@@ -24,6 +24,8 @@ class VotoController extends Controller
             ->withCount('votos')
             ->withSum('votos as total_votos', 'votos')
             ->withMax('votos as ultimo_conteo', 'updated_at')
+            // Referencia al primer conteo de la mesa: permite abrir la edición con la mesa bloqueada.
+            ->withMin('votos as voto_id', 'voto_id')
             ->whereHas('votos');
 
         // Un personero solo ve su propia mesa; el administrador ve todas.
@@ -114,11 +116,14 @@ class VotoController extends Controller
      */
     public function update(Request $request, Voto $voto)
     {
+        // En edición la mesa está bloqueada: siempre se usa la mesa del registro.
+        $request->merge(['mesa_id' => $voto->mesa_id]);
         $data = $this->validar($request);
         $conteos = $this->normalizarConteos($request);
 
         DB::transaction(function () use ($data, $conteos, $request) {
-            $this->asegurarPersonero((int) $data['mesa_id'], $request->input('persona_id'));
+            // Solo se añade personero si la mesa aún no tiene; si ya existe se bloquea.
+            $this->asegurarPersonero((int) $data['mesa_id'], $request->input('afiliado_id'));
             foreach ($conteos as $partidoId => $votos) {
                 $this->guardarConteo((int) $data['mesa_id'], $partidoId, $votos, Auth::id());
             }

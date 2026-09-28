@@ -120,7 +120,7 @@ class PersonaController extends Controller
     /**
      * Módulos desde los que se puede registrar una persona.
      */
-    private const ORIGENES = ['personas', 'afiliados', 'usuarios', 'personeros'];
+    private const ORIGENES = ['personas', 'afiliados', 'usuarios', 'personeros', 'votos'];
 
     /**
      * Valida el módulo de origen recibido; por defecto es el listado de personas.
@@ -139,6 +139,7 @@ class PersonaController extends Controller
             'afiliados' => 'afiliados.create',
             'usuarios' => 'usuarios.create',
             'personeros' => 'personeros.create',
+            'votos' => 'votos.registrar',
             default => 'personas.index',
         };
     }
@@ -154,6 +155,7 @@ class PersonaController extends Controller
             'afiliados' => 'Afiliados',
             'usuarios' => 'Usuarios',
             'personeros' => 'Personeros',
+            'votos' => 'Conteo de votos',
         ];
 
         return [route($this->rutaOrigen($origen)), $etiquetas[$origen] ?? 'Personas'];
