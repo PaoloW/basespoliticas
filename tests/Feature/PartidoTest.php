@@ -49,7 +49,20 @@ class PartidoTest extends TestCase
         $this->actingAs($this->usuarioAdmin())
             ->get(route('partidos.create'))
             ->assertOk()
-            ->assertSee('Nombre del partido');
+            ->assertSee('Nombre del partido')
+            ->assertSee('Color del partido');
+    }
+
+    /**
+     * Se puede guardar el color del partido.
+     */
+    public function test_se_puede_guardar_el_color_del_partido(): void
+    {
+        $this->actingAs($this->usuarioAdmin())
+            ->post(route('partidos.store'), ['nombre' => 'Partido Azul', 'orden' => 1, 'color' => '#1c71d8'])
+            ->assertRedirect(route('partidos.index'));
+
+        $this->assertDatabaseHas('partidos', ['nombre' => 'Partido Azul', 'color' => '#1c71d8']);
     }
 
     /**

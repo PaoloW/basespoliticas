@@ -43,6 +43,7 @@ class PartidoController extends Controller
             $partido = new Partido();
             $partido->nombre = $data['nombre'];
             $partido->orden = $data['orden'];
+            $partido->color = $data['color'] ?? $this->colorAleatorio();
             $partido->autor_id = Auth::id();
             $partido->editor_id = Auth::id();
             $partido->save();
@@ -72,6 +73,7 @@ class PartidoController extends Controller
         DB::transaction(function () use ($partido, $data) {
             $partido->nombre = $data['nombre'];
             $partido->orden = $data['orden'];
+            $partido->color = $data['color'] ?? $partido->color ?? $this->colorAleatorio();
             $partido->editor_id = Auth::id();
             $partido->save();
         });
@@ -110,16 +112,27 @@ class PartidoController extends Controller
         return $request->validate([
             'nombre' => 'required|string|max:255',
             'orden' => 'required|integer|min:1|unique:partidos,orden'.$ignorar,
+            'color' => 'nullable|regex:/^#[0-9A-Fa-f]{6}$/',
             'logo' => 'nullable|image|max:2048',
         ], [
             'orden.unique' => 'El orden ingresado ya está en uso por otro partido.',
+            'color.regex' => 'El color debe tener un formato hexadecimal válido, por ejemplo: #1c71d8.',
             'logo.image' => 'El logo debe ser una imagen.',
             'logo.max' => 'El logo no puede superar los 2 MB.',
         ], [
             'nombre' => 'nombre del partido',
             'orden' => 'orden',
+            'color' => 'color',
             'logo' => 'logo',
         ]);
+    }
+
+    /**
+     * Genera un color hexadecimal aleatorio (#rrggbb).
+     */
+    private function colorAleatorio(): string
+    {
+        return '#'.str_pad(dechex(random_int(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
     }
 
     /**

@@ -25,6 +25,12 @@
                                value="{{ old('orden', $partido->orden) }}" min="1" step="1" required>
                         <div class="form-text">Orden de aparición en el registro de votos. No se puede repetir.</div>
                     </div>
+                    <div class="col-12 col-md-6 mb-3">
+                        <label for="color" class="form-label"><strong>Color del partido</strong></label>
+                        <input type="color" class="form-control form-control-color" id="color" name="color"
+                               value="{{ old('color', $partido->color ?? '#0d6efd') }}">
+                        <div class="form-text">Color de identificación del partido en el registro de votos.</div>
+                    </div>
                     <div class="col-12 mb-3">
                         <label for="nombre" class="form-label"><strong>Nombre del partido</strong></label>
                         <input type="text" class="form-control" id="nombre" name="nombre"
