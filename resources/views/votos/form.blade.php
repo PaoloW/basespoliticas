@@ -137,6 +137,11 @@
                                     </td>
                                 </tr>
                                 @endforeach
+                                <tr class="table-light fw-bold" id="filaTotalVotos">
+                                    <td class="text-center"><i class="fas fa-calculator"></i></td>
+                                    <td class="text-end">TOTAL DE VOTOS</td>
+                                    <td class="text-center"><span id="totalVotos">0</span></td>
+                                </tr>
                             </tbody>
                         </table>
 <style>.placeholder-logo{display:inline-flex;align-items:center;justify-content:center;height:38px;width:38px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:.375rem;color:#adb5bd}</style>
@@ -238,12 +243,27 @@
                 $bloquePersonero.show();
             }
 
+            // Suma todos los inputs de votos y muestra el total en la fila de pie de tabla.
+            const recalcularTotal = function () {
+                let total = 0;
+                $('input[name^="votos["]').each(function () {
+                    const valor = parseInt($(this).val(), 10);
+                    total += isNaN(valor) ? 0 : valor;
+                });
+                $('#totalVotos').text(total.toLocaleString('es-PE'));
+            };
+
+            // Recalcula el total al salir de cada input de votos.
+            $(document).on('blur change', 'input[name^="votos["]', recalcularTotal);
+            recalcularTotal(); // Total inicial con los valores cargados en el servidor.
+
             const pintarConteos = function (conteos) {
                 $('input[name^="votos["]').each(function () {
                     const nombre = $(this).attr('name') || '';
                     const partidoId = nombre.replace(/[^0-9]/g, '');
                     $(this).val((conteos && conteos[partidoId] !== undefined) ? conteos[partidoId] : 0);
                 });
+                recalcularTotal();
             };
 
             // Resetea el formulario inferior (mesa + votos) al cambiar de mesa.
