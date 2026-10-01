@@ -111,9 +111,20 @@
             // Mantener solo los 10 partidos con mayor cantidad de votos.
             const partidos = partidos_total.sort((a, b) => b.votos - a.votos).slice(0, 10);
             
-            const esOscuro = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-            const colorTexto = esOscuro ? '#ffffff' : '#212529';
-            const colorRejilla = esOscuro ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+            // Colores según el tema activo: se recalculan al cambiar de tema.
+            let colorTexto = '#212529';
+            let colorRejilla = 'rgba(0, 0, 0, 0.1)';
+
+            function actualizarColoresTema() {
+                const esOscuro = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+                colorTexto = esOscuro ? '#ffffff' : '#212529';
+                colorRejilla = esOscuro ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+            }
+            actualizarColoresTema();
+
+            // Instancias de los gráficos (para actualizarlos al cambiar el tema).
+            let chartMesas = null;
+            let chartPartidos = null;
             const porcentaje = datosMesas.total > 0
                 ? Math.round((datosMesas.conVotos * 100) / datosMesas.total)
                 : 0;
@@ -177,7 +188,7 @@
                     },
                 };
 
-                new Chart(lienzo, {
+                chartMesas = new Chart(lienzo, {
                     type: 'bar',
                     data: {
                         labels: ['Mesas'],
@@ -264,7 +275,7 @@
                     },
                 };
 
-                new Chart(lienzo, {
+                chartPartidos = new Chart(lienzo, {
                     type: 'bar',
                     data: {
                         labels: partidos.map(function (partido) { return partido.nombre; }),
@@ -315,6 +326,26 @@
                     plugins: [pluginLogos],
                 });
             }
+
+            // Adaptar los colores de labels, ejes y rejilla cuando cambia el tema.
+            const observadorTema = new MutationObserver(function () {
+                actualizarColoresTema();
+                if (chartMesas) {
+                    chartMesas.options.scales.x.ticks.color = colorTexto;
+                    chartMesas.options.scales.x.grid.color = colorRejilla;
+                    chartMesas.update();
+                }
+                if (chartPartidos) {
+                    chartPartidos.options.plugins.datalabels.color = colorTexto;
+                    chartPartidos.options.scales.y.ticks.color = colorTexto;
+                    chartPartidos.options.scales.y.grid.color = colorRejilla;
+                    chartPartidos.update();
+                }
+            });
+            observadorTema.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['data-bs-theme'],
+            });
         });
     </script>
 @endpush
