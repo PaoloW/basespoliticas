@@ -53,6 +53,34 @@
     </div>
 </div>
 
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-poll me-2"></i>Mesas con votos registrados</span>
+                <span class="badge bg-primary">{{ $mesasConVotos }} / {{ $mesasTotales }} mesas</span>
+            </div>
+            <div class="card-body">
+                <div style="height: 180px;">
+                    <canvas id="graficoMesas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="fas fa-chart-column me-2"></i>Votos por partido
+            </div>
+            <div class="card-body">
+                <div style="height: 320px;">
+                    <canvas id="graficoPartidos"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card mb-4">
     <div class="card-header">
         <i class="fas fa-home me-2"></i>Bienvenida al sistema
@@ -65,3 +93,228 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+    {{-- Chart.js en local (descargado en public/js) --}}
+    <script type="text/javascript" src="{{ asset('js/chart.umd.min.js') }}"></script>
+    <script type="text/javascript" src="{{ asset('js/chartjs-plugin-datalabels.min.js') }}"></script>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            const datosMesas = {
+                conVotos: {{ (int) $mesasConVotos }},
+                total: {{ (int) $mesasTotales }},
+            };
+            const partidos = @json($partidos);
+            const esOscuro = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            const colorTexto = esOscuro ? '#ffffff' : '#212529';
+            const colorRejilla = esOscuro ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+            const porcentaje = datosMesas.total > 0
+                ? Math.round((datosMesas.conVotos * 100) / datosMesas.total)
+                : 0;
+
+            // Logos de los partidos: se cargan antes de dibujar el gráfico.
+            const logos = partidos.map(function (partido) {
+                if (!partido.logo) {
+                    return null;
+                }
+                const imagen = new Image();
+                imagen.src = partido.logo;
+                return imagen;
+            });
+
+            const esperarLogos = Promise.all(logos.map(function (imagen) {
+                if (!imagen || imagen.complete) {
+                    return Promise.resolve();
+                }
+                return new Promise(function (resolver) {
+                    imagen.onload = resolver;
+                    imagen.onerror = resolver;
+                });
+            }));
+
+            esperarLogos.then(function () {
+                graficoMesas();
+                graficoPartidos();
+            });
+
+            // Barra de progreso: mesas con votos registrados / mesas totales.
+            function graficoMesas() {
+                const lienzo = document.getElementById('graficoMesas');
+                if (!lienzo) {
+                    return;
+                }
+
+                // Porcentaje dibujado dentro (o al final) de la barra.
+                const pluginPorcentaje = {
+                    id: 'porcentajeMesas',
+                    afterDatasetsDraw: function (chart) {
+                        const barra = chart.getDatasetMeta(0).data[0];
+                        if (!barra) {
+                            return;
+                        }
+                        const ctx = chart.ctx;
+                        const texto = porcentaje + '%';
+                        ctx.save();
+                        ctx.font = 'bold 13px sans-serif';
+                        ctx.textBaseline = 'middle';
+                        const anchoTexto = ctx.measureText(texto).width;
+                        if (barra.width >= anchoTexto + 20) {
+                            ctx.fillStyle = '#ffffff';
+                            ctx.textAlign = 'right';
+                            ctx.fillText(texto, barra.x - 10, barra.y);
+                        } else {
+                            ctx.fillStyle = colorTexto;
+                            ctx.textAlign = 'left';
+                            ctx.fillText(texto, barra.x + 10, barra.y);
+                        }
+                        ctx.restore();
+                    },
+                };
+
+                new Chart(lienzo, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Mesas'],
+                        datasets: [{
+                            label: 'Mesas con votos registrados',
+                            data: [porcentaje],
+                            backgroundColor: '#0d6efd',
+                            borderRadius: 6,
+                            barThickness: 32,
+                        }],
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { right: 40 } },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function () {
+                                        return ' ' + datosMesas.conVotos + ' de ' + datosMesas.total + ' mesas (' + porcentaje + '%)';
+                                    },
+                                },
+                            },
+                        },
+                        scales: {
+                            x: {
+                                min: 0,
+                                max: 100,
+                                ticks: {
+                                    callback: function (valor) { return valor + '%'; },
+                                    color: colorTexto,
+                                },
+                                grid: { color: colorRejilla },
+                            },
+                            y: { display: false },
+                        },
+                    },
+                    plugins: [pluginPorcentaje],
+                });
+            }
+
+            // Barras verticales: votos por partido (logo en el eje X y color propio).
+            function graficoPartidos() {
+                const lienzo = document.getElementById('graficoPartidos');
+                if (!lienzo) {
+                    return;
+                }
+
+                // Logo de cada partido debajo de su barra, en lugar del nombre.
+                const pluginLogos = {
+                    id: 'logosPartidos',
+                    afterDatasetsDraw: function (chart) {
+                        const ctx = chart.ctx;
+                        const area = chart.chartArea;
+                        const ejeX = chart.scales.x;
+                        const espacio = (area.right - area.left) / Math.max(partidos.length, 1);
+                        ctx.save();
+                        partidos.forEach(function (partido, indice) {
+                            const centroX = ejeX.getPixelForTick(indice);
+                            const topeY = area.bottom + 8;
+                            const imagen = logos[indice];
+                            if (imagen && imagen.naturalWidth) {
+                                const relacion = imagen.naturalWidth / imagen.naturalHeight;
+                                let ancho = Math.min(espacio - 8, 44);
+                                let alto = ancho / relacion;
+                                if (alto > 44) {
+                                    alto = 44;
+                                    ancho = alto * relacion;
+                                }
+                                ctx.drawImage(imagen, centroX - ancho / 2, topeY, ancho, alto);
+                            } else {
+                                // Sin logo: se muestra el nombre del partido.
+                                ctx.fillStyle = colorTexto;
+                                ctx.font = 'bold 11px sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'top';
+                                ctx.fillText(partido.nombre, centroX, topeY, Math.max(espacio - 8, 20));
+                            }
+                        });
+                        ctx.restore();
+                    },
+                };
+
+                new Chart(lienzo, {
+                    type: 'bar',
+                    data: {
+                        labels: partidos.map(function (partido) { return partido.nombre; }),
+                        datasets: [{
+                            label: 'Votos',
+                            data: partidos.map(function (partido) { return partido.votos; }),
+                            backgroundColor: partidos.map(function (partido) { return partido.color; }),
+                            borderRadius: 4,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { bottom: 56 } },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    title: function (items) {
+                                        return items.length ? partidos[items[0].dataIndex].nombre : '';
+                                    },
+                                    label: function (item) {
+                                        return ' ' + item.parsed.y + ' votos';
+                                    },
+                                },
+                            },
+                        },
+                        scales: {
+                            x: {
+                                ticks: { display: false, autoSkip: false, maxRotation: 0 },
+                                grid: { display: false },
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: colorTexto, precision: 0 },
+                                grid: { color: colorRejilla },
+                            },
+                        },
+                    },
+                    plugins: [
+                        pluginLogos,
+                        {
+                            datalabels: {
+                                anchor: 'end',
+                                align: 'top',
+                                color: '#333',
+                                font: {
+                                    weight: 'bold'
+                                },
+                                formatter: function(value) {
+                                    return value;
+                                }
+                            }
+                        }
+                    ],
+                });
+            }
+        });
+    </script>
+@endpush

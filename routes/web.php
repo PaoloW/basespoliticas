@@ -12,6 +12,8 @@ use App\Http\Controllers\PersonaController;
 use App\Http\Controllers\PersoneroController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VotoController;
+use App\Models\Mesa;
+use App\Models\Partido;
 
 // ---------------------------------------------------------------------------
 // Autenticación
@@ -24,8 +26,26 @@ Route::get('/login', [AuthController::class, 'index'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
+// Datos del panel de control: mesas con votos registrados y votos por partido.
 Route::get('/home', function () {
-    return view('home');
+    $mesasTotales = Mesa::count();
+    $mesasConVotos = Mesa::whereHas('votos')->count();
+
+    // Colores de respaldo cuando el partido no registra uno propio.
+    $coloresRespaldo = ['#0d6efd', '#dc3545', '#198754', '#ffc107', '#0dcaf0', '#6f42c1', '#fd7e14', '#20c997'];
+
+    $partidos = Partido::withSum('votos as total_votos', 'votos')
+        ->orderBy('orden')
+        ->get()
+        ->map(fn (Partido $partido, int $indice) => [
+            'nombre' => $partido->nombre,
+            'logo' => $partido->logo ? asset($partido->logo) : null,
+            'color' => $partido->color ?: $coloresRespaldo[$indice % count($coloresRespaldo)],
+            'votos' => (int) ($partido->total_votos ?? 0),
+        ])
+        ->values();
+
+    return view('home', compact('mesasTotales', 'mesasConVotos', 'partidos'));
 })->name('home')->middleware('auth');
 
 // ---------------------------------------------------------------------------

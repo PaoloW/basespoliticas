@@ -40,6 +40,7 @@
                 <thead>
                     <tr>
                         <th style="width: 70px;" class="text-center">Orden</th>
+                        <th style="width: 60px;" class="text-center">Color</th>
                         <th style="width: 60px;" class="text-center">Logo</th>
                         <th>Nombre del partido</th>
                         <th class="text-end">Acciones</th>
@@ -49,6 +50,9 @@
                     @forelse ( $partidos as $partido )
                     <tr>
                         <td class="text-center fw-bold">{{ $partido->orden ?? '—' }}</td>
+                        <td class="text-center">
+                            <div class="d-inline-block" style="width: 60px; height: 38px; background-color: {{ $partido->color }}; border-radius: 4px; border: 1px solid black;"></div>
+                        </td>
                         <td class="text-center">
                             @if (!empty($partido->logo))
                                 <img src="{{ asset($partido->logo) }}" alt="Logo" style="height: 38px; width: auto; max-width: 60px; object-fit: contain;">
@@ -87,7 +91,7 @@
                 extend: extend,
                 text: '<i class="' + icono + ' me-1"></i>' + texto,
                 className: 'btn btn-sm ' + clase,
-                exportOptions: { columns: [0, 1, 2] },
+                exportOptions: { columns: [0, 1, 2, 3] },
             });
 
             $('#tabla-partidos').DataTable({
