@@ -99,12 +99,18 @@
     <script type="text/javascript" src="{{ asset('js/chart.umd.min.js') }}"></script>
     <script type="text/javascript" src="{{ asset('js/chartjs-plugin-datalabels.min.js') }}"></script>
     <script type="text/javascript">
+        // Registro explícito del plugin (v2.2.0 no se auto-registra).
+        Chart.register(ChartDataLabels);
+
         document.addEventListener('DOMContentLoaded', function () {
             const datosMesas = {
                 conVotos: {{ (int) $mesasConVotos }},
                 total: {{ (int) $mesasTotales }},
             };
-            const partidos = @json($partidos);
+            const partidos_total = @json($partidos);
+            // Mantener solo los 10 partidos con mayor cantidad de votos.
+            const partidos = partidos_total.sort((a, b) => b.votos - a.votos).slice(0, 10);
+            
             const esOscuro = document.documentElement.getAttribute('data-bs-theme') === 'dark';
             const colorTexto = esOscuro ? '#ffffff' : '#212529';
             const colorRejilla = esOscuro ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
@@ -190,6 +196,7 @@
                         layout: { padding: { right: 40 } },
                         plugins: {
                             legend: { display: false },
+                            datalabels: { display: false },
                             tooltip: {
                                 callbacks: {
                                     label: function () {
@@ -274,6 +281,13 @@
                         layout: { padding: { bottom: 56 } },
                         plugins: {
                             legend: { display: false },
+                            datalabels: {
+                                anchor: 'end',
+                                align: 'top',
+                                color: colorTexto,
+                                font: { weight: 'bold' },
+                                formatter: function (valor) { return valor; },
+                            },
                             tooltip: {
                                 callbacks: {
                                     title: function (items) {
@@ -294,25 +308,11 @@
                                 beginAtZero: true,
                                 ticks: { color: colorTexto, precision: 0 },
                                 grid: { color: colorRejilla },
+                                grace: 0.5,
                             },
                         },
                     },
-                    plugins: [
-                        pluginLogos,
-                        {
-                            datalabels: {
-                                anchor: 'end',
-                                align: 'top',
-                                color: '#333',
-                                font: {
-                                    weight: 'bold'
-                                },
-                                formatter: function(value) {
-                                    return value;
-                                }
-                            }
-                        }
-                    ],
+                    plugins: [pluginLogos],
                 });
             }
         });
