@@ -126,7 +126,7 @@
             let chartMesas = null;
             let chartPartidos = null;
             const porcentaje = datosMesas.total > 0
-                ? Math.round((datosMesas.conVotos * 100) / datosMesas.total)
+                ? ((datosMesas.conVotos * 100) / datosMesas.total).toFixed(2)
                 : 0;
 
             // Logos de los partidos: se cargan antes de dibujar el gráfico.
@@ -319,7 +319,7 @@
                                 beginAtZero: true,
                                 ticks: { color: colorTexto, precision: 0 },
                                 grid: { color: colorRejilla },
-                                grace: 0.5,
+                                grace: '10%',
                             },
                         },
                     },
